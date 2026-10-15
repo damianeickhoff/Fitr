@@ -37,7 +37,13 @@ GEMINI_MODEL="gemini-3.8-flash"   # optional; any free-tier text+vision model
 Without a key the app still works: photos are saved untagged for you to fill
 in, and outfits are matched by simple colour rules.
 
-**Studio photos and try-on** need an image model, and no provider offers one
+**Try-on for free:** each outfit has a "Send to ChatGPT" button that hands your
+photo, the pieces and a ready-made prompt to the ChatGPT app, so the picture is
+made on your own ChatGPT subscription; "Add its picture" brings the result back.
+On a phone over HTTPS this opens the share menu; elsewhere it copies the prompt,
+downloads the photos as one collage and opens ChatGPT in a new tab.
+
+**One-tap studio photos and try-on** need an image model, and no provider offers one
 for free. The simplest is ChatGPT's: put an OpenAI API key in `.env` as
 `OPENAI_API_KEY` (from platform.openai.com/api-keys, with some API credit — a
 ChatGPT Plus subscription doesn't cover the API). `OPENAI_IMAGE_QUALITY`

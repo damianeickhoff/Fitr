@@ -10,7 +10,8 @@ import { button, cx, pill, type Tone } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseAdvice, shopUrl, type AdviceKind } from "@/lib/garment";
-import { imageAiEnabled } from "@/lib/image-gen";
+import { imageProvider } from "@/lib/image-gen";
+import { SOURCE_LABEL } from "@/lib/try-on";
 import { imageUrl } from "@/lib/storage-url";
 
 async function load(id: string) {
@@ -40,6 +41,8 @@ const ADVICE: Record<AdviceKind, { label: string; tone: Tone; icon: typeof Plus 
 
 export default async function OutfitPage({ params }: PageProps<"/outfits/[id]">) {
   const { outfit, selfPhotos, userId } = await load((await params).id);
+  const provider = imageProvider();
+  const apiLabel = provider ? SOURCE_LABEL[provider] : null;
   const advice = parseAdvice(outfit.advice);
   const inLook = new Set(outfit.items.map((i) => i.itemId));
   const adviceIds = advice.map((a) => a.itemId).filter((id): id is string => Boolean(id));
@@ -127,9 +130,9 @@ export default async function OutfitPage({ params }: PageProps<"/outfits/[id]">)
 
       <TryOnPanel
         outfitId={outfit.id}
-        enabled={imageAiEnabled()}
+        apiLabel={apiLabel}
         selfPhotos={selfPhotos.map((p) => ({ id: p.id, path: p.path }))}
-        results={outfit.tryOns.map((t) => ({ id: t.id, path: t.resultPath }))}
+        results={outfit.tryOns.map((t) => ({ id: t.id, path: t.resultPath, source: t.source }))}
         pieces={outfit.items.map(({ item }) => ({ id: item.id, name: item.name, imagePath: item.imagePath }))}
       />
     </>

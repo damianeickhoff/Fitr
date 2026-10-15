@@ -126,6 +126,10 @@ model TryOn {
   selfPhotoId String
   selfPhoto   SelfPhoto @relation(fields: [selfPhotoId], references: [id], onDelete: Cascade)
   resultPath  String
+  /// Who drew it: "openai" or "gemini" through the API, or "chatgpt-app" when
+  /// the user made it in the ChatGPT app on their own subscription and
+  /// uploaded the result.
+  source      String    @default("openai")
   createdAt   DateTime  @default(now())
 }
 

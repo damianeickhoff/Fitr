@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { requireUser } from "./auth";
 import { db } from "./db";
 import { aiEnabled, describeAiError } from "./gemini";
-import { describeImageError, generateImage, imageAiEnabled } from "./image-gen";
-import { toJpeg } from "./images";
+import { describeImageError, generateImage, imageAiEnabled, imageProvider } from "./image-gen";
+import { normalisePhoto, toJpeg } from "./images";
 import { ruleOutfits, styleOutfits, type DraftOutfit, type OutfitRequest } from "./outfits";
 import { deleteStored, readStored, saveFile } from "./storage";
+import { tryOnPrompt } from "./try-on";
 
 export type GenerateState = { error?: string; notice?: string } | undefined;
 
@@ -132,23 +133,42 @@ export async function tryOn(outfitId: string, _: TryOnState, form: FormData): Pr
   try {
     const person = await readStored(self.path);
     const pieces = await Promise.all(outfit.items.map((oi) => readStored(oi.item.imagePath)));
-    const list = outfit.items.map((oi, n) => `${n + 2}. ${oi.item.name}`).join("\n");
     const result = await generateImage(
-      "Image 1 is a photo of a person. The other images are clothing pieces:\n" +
-        list +
-        "\n\nCreate a realistic photo of the same person wearing exactly these pieces together as one outfit. " +
-        "Keep their face, hair, skin tone, body shape and pose, and the original background and lighting. " +
-        "Reproduce each garment's colour, fabric, pattern and details faithfully, fitted naturally to their body. " +
-        "Replace whatever they were wearing. Full-length if the original is full-length. No text.",
+      tryOnPrompt(outfit.items.map((oi) => oi.item.name)),
       [{ data: person }, ...pieces.map((data) => ({ data }))],
     );
     const resultPath = await saveFile(user.id, await toJpeg(result), "tryon");
-    await db.tryOn.create({ data: { userId: user.id, outfitId, selfPhotoId: self.id, resultPath } });
+    await db.tryOn.create({
+      data: { userId: user.id, outfitId, selfPhotoId: self.id, resultPath, source: imageProvider() ?? "openai" },
+    });
     revalidatePath(`/outfits/${outfitId}`);
     return {};
   } catch (error) {
     return { error: describeImageError(error) };
   }
+}
+
+/**
+ * The free route: the user made the picture in the ChatGPT app on their own
+ * subscription and brings it back. Stored exactly like an API result.
+ */
+export async function addTryOnFromApp(outfitId: string, form: FormData): Promise<{ error?: string }> {
+  const user = await requireUser();
+  const outfit = await db.outfit.findFirst({ where: { id: outfitId, userId: user.id } });
+  const self = await db.selfPhoto.findFirst({ where: { id: String(form.get("selfPhoto")), userId: user.id } });
+  if (!outfit || !self) return { error: "Pick one of your photos first." };
+  const file = form.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose the picture ChatGPT made." };
+
+  try {
+    const photo = await normalisePhoto(Buffer.from(await file.arrayBuffer()));
+    const resultPath = await saveFile(user.id, photo.data, "tryon");
+    await db.tryOn.create({ data: { userId: user.id, outfitId, selfPhotoId: self.id, resultPath, source: "chatgpt-app" } });
+  } catch {
+    return { error: "That file isn't a picture FITR can read. Save it from ChatGPT as an image and try again." };
+  }
+  revalidatePath(`/outfits/${outfitId}`);
+  return {};
 }
 
 export async function deleteTryOn(id: string) {

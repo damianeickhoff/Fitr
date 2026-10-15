@@ -103,4 +103,9 @@ db.prepare(
 const link = db.prepare("INSERT INTO OutfitItem (outfitId, itemId, position) VALUES (?, ?, ?)");
 ["tee", "biker", "jeans", "trainers"].forEach((key, position) => link.run(outfitId, ids[key], position));
 
-console.log(`Demo wardrobe ready: ${WARDROBE.length} pieces and 1 saved look. Sign in as ${DEMO_EMAIL}.`);
+// A full-length photo to try outfits on with.
+db.prepare("INSERT INTO SelfPhoto (id, userId, path, createdAt) VALUES (?, ?, ?, ?)").run(
+  randomUUID(), userId, await store("me.jpg", "self"), daysAgo(30),
+);
+
+console.log(`Demo wardrobe ready: ${WARDROBE.length} pieces, 1 saved look and a photo to try it on. Sign in as ${DEMO_EMAIL}.`);
