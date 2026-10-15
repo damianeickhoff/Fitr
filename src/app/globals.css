@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/*
+ * FITR is a phone app. On a computer the same phone layout sits in a centred
+ * column on the "stage" colour, so testing on desktop is testing the real thing.
+ * Light only for now: the colourful pills are tuned for a white ground.
+ */
+:root {
+  color-scheme: light;
+  --stage: #e9ebee;
+  --paper: #ffffff;
+  --ground: #f3f4f6;
+  --ink: #1b1d2a;
+  --muted: #5a6072;
+  --line: #e4e6ea;
+  --cobalt: #2a44e8;
+  --danger: #b4232f;
+}
+
+@theme inline {
+  --color-stage: var(--stage);
+  --color-paper: var(--paper);
+  --color-ground: var(--ground);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-cobalt: var(--cobalt);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+html {
+  background: var(--stage);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--stage);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}

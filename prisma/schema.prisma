@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  /// Bumped to revoke every session the account has signed.
+  tokenVersion Int      @default(0)
+  /// Free text the user writes about their taste ("mostly black, hates
+  /// skinny jeans"). Sent with every outfit and advice prompt.
+  styleNotes   String?
+  createdAt    DateTime @default(now())
+
+  items      Item[]
+  outfits    Outfit[]
+  selfPhotos SelfPhoto[]
+  tryOns     TryOn[]
+  insights   Insight[]
+}
+
+/// One piece of clothing. A single photo can produce several items (a flat
+/// lay of a whole outfit), each cropped from the same original.
+model Item {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  /// One of the keys in `CATEGORIES` (src/lib/garment.ts).
+  category    String
+  /// Free text: "chelsea boots", "oxford shirt".
+  subcategory String?
+  /// JSON array of plain colour names, most dominant first.
+  colors      String   @default("[]")
+  /// Hex of the dominant colour, for swatches.
+  colorHex    String?
+  pattern     String?
+  material    String?
+  /// JSON array of style words: "minimal", "streetwear", "smart casual".
+  styles      String   @default("[]")
+  /// JSON array of seasons it suits: spring, summer, autumn, winter.
+  seasons     String   @default("[]")
+  /// 1 (loungewear) to 5 (black tie).
+  formality   Int      @default(2)
+  brand       String?
+  description String?
+
+  /// The photo as taken, relative to the uploads root.
+  photoPath   String
+  /// The garment cut out of `photoPath` and framed like a shop listing.
+  imagePath   String
+  /// The same cut-out on a transparent background, for laying outfits out
+  /// as a flat lay. Null when background removal failed for this photo.
+  cutoutPath  String?
+  /// False when Gemini was unavailable and the fields above are placeholders
+  /// the user should check.
+  aiTagged    Boolean  @default(false)
+  favourite   Boolean  @default(false)
+  wearCount   Int      @default(0)
+  /// Drives the "not worn since" notes and the faded look of neglected pieces.
+  lastWornAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  outfitItems OutfitItem[]
+
+  @@index([userId, category])
+}
+
+model Outfit {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  occasion  String?
+  /// Why the pieces work together, in a sentence or two.
+  reasoning String?
+  /// JSON array of `Advice` (src/lib/garment.ts): accessories to add from
+  /// the wardrobe or things worth buying to finish the look.
+  advice    String   @default("[]")
+  /// Generated outfits are kept unsaved until the user keeps one, so a
+  /// round of suggestions does not clutter the saved list.
+  saved     Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  items  OutfitItem[]
+  tryOns TryOn[]
+
+  @@index([userId, saved])
+}
+
+model OutfitItem {
+  outfitId String
+  outfit   Outfit @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  itemId   String
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position Int    @default(0)
+
+  @@id([outfitId, itemId])
+}
+
+/// Photos of the user themself, used as the base for virtual try-on.
+model SelfPhoto {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path      String
+  createdAt DateTime @default(now())
+
+  tryOns TryOn[]
+}
+
+model TryOn {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outfitId    String
+  outfit      Outfit    @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  selfPhotoId String
+  selfPhoto   SelfPhoto @relation(fields: [selfPhotoId], references: [id], onDelete: Cascade)
+  resultPath  String
+  createdAt   DateTime  @default(now())
+}
+
+/// A wardrobe-wide shopping and styling analysis. Kept so the tips page
+/// does not spend an AI call on every visit; the user refreshes it on demand.
+model Insight {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// JSON `WardrobeInsight` (src/lib/advice.ts).
+  content   String
+  /// How many items the wardrobe had when this was written, to flag it stale.
+  itemCount Int
+  createdAt DateTime @default(now())
+}
