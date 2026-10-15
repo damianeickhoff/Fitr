@@ -14,8 +14,11 @@ export function aiEnabled() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-/** Image generation is not on Gemini's free tier, so it is opt-in by model name. */
-export function imageAiEnabled() {
+/**
+ * Image generation is not on Gemini's free tier, so it is opt-in by model name.
+ * Which provider actually draws images is decided in image-gen.ts.
+ */
+export function geminiImagesEnabled() {
   return aiEnabled() && Boolean(process.env.GEMINI_IMAGE_MODEL);
 }
 
@@ -103,8 +106,8 @@ export async function generateJson<T extends z.ZodType>(options: {
   return parsed.data;
 }
 
-/** One image out, from a prompt and reference images. */
-export async function generateImage(prompt: string, images: ImageInput[]): Promise<Buffer> {
+/** One image out, from a prompt and reference images. Use image-gen.ts, which picks the provider. */
+export async function geminiImage(prompt: string, images: ImageInput[]): Promise<Buffer> {
   const model = process.env.GEMINI_IMAGE_MODEL;
   if (!model) throw new AiError("Set GEMINI_IMAGE_MODEL to generate images.");
   const response = await ai().models.generateContent({

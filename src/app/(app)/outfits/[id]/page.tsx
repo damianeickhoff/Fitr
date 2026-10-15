@@ -10,7 +10,7 @@ import { button, cx, pill, type Tone } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseAdvice, shopUrl, type AdviceKind } from "@/lib/garment";
-import { imageAiEnabled } from "@/lib/gemini";
+import { imageAiEnabled } from "@/lib/image-gen";
 import { imageUrl } from "@/lib/storage-url";
 
 async function load(id: string) {

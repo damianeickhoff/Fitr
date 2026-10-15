@@ -37,9 +37,13 @@ GEMINI_MODEL="gemini-3.8-flash"   # optional; any free-tier text+vision model
 Without a key the app still works: photos are saved untagged for you to fill
 in, and outfits are matched by simple colour rules.
 
-**Studio photos and try-on** need an image model, which Gemini doesn't offer on
-the free tier. Set `GEMINI_IMAGE_MODEL` (for example `gemini-3.1-flash-image`)
-on a billed key to switch them on.
+**Studio photos and try-on** need an image model, and no provider offers one
+for free. The simplest is ChatGPT's: put an OpenAI API key in `.env` as
+`OPENAI_API_KEY` (from platform.openai.com/api-keys, with some API credit — a
+ChatGPT Plus subscription doesn't cover the API). `OPENAI_IMAGE_QUALITY`
+(low/medium/high) trades looks for cost. Gemini's image model works too: set
+`GEMINI_IMAGE_MODEL` on a billed Gemini key, and `IMAGE_PROVIDER` if both are
+configured.
 
 **Cut-outs** don't use Gemini at all: background removal runs on the server
 with a local model from `@imgly/background-removal-node`, about a second per

@@ -6,7 +6,8 @@ import { button, pill } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { signOut } from "@/lib/auth-actions";
 import { db } from "@/lib/db";
-import { aiEnabled, imageAiEnabled } from "@/lib/gemini";
+import { aiEnabled } from "@/lib/gemini";
+import { imageModelLabel } from "@/lib/image-gen";
 
 export const metadata: Metadata = { title: "Me" };
 
@@ -22,8 +23,8 @@ export default async function MePage() {
     },
     {
       name: "Studio photos and try-on",
-      on: imageAiEnabled(),
-      detail: imageAiEnabled() ? process.env.GEMINI_IMAGE_MODEL! : "Add GEMINI_IMAGE_MODEL (paid)",
+      on: imageModelLabel() !== null,
+      detail: imageModelLabel() ?? "Add OPENAI_API_KEY (paid)",
     },
     { name: "Cutting out photos", on: true, detail: "Runs on your server, free" },
   ];

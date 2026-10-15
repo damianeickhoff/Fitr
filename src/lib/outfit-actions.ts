@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "./auth";
 import { db } from "./db";
-import { aiEnabled, describeAiError, generateImage, imageAiEnabled } from "./gemini";
+import { aiEnabled, describeAiError } from "./gemini";
+import { describeImageError, generateImage, imageAiEnabled } from "./image-gen";
 import { toJpeg } from "./images";
 import { ruleOutfits, styleOutfits, type DraftOutfit, type OutfitRequest } from "./outfits";
 import { deleteStored, readStored, saveFile } from "./storage";
@@ -120,7 +121,7 @@ export type TryOnState = { error?: string } | undefined;
  */
 export async function tryOn(outfitId: string, _: TryOnState, form: FormData): Promise<TryOnState> {
   const user = await requireUser();
-  if (!imageAiEnabled()) return { error: "Try-on needs GEMINI_IMAGE_MODEL to be set." };
+  if (!imageAiEnabled()) return { error: "Try-on needs an image model. Add an OPENAI_API_KEY." };
   const outfit = await db.outfit.findFirst({
     where: { id: outfitId, userId: user.id },
     include: { items: { include: { item: true }, orderBy: { position: "asc" } } },
@@ -146,7 +147,7 @@ export async function tryOn(outfitId: string, _: TryOnState, form: FormData): Pr
     revalidatePath(`/outfits/${outfitId}`);
     return {};
   } catch (error) {
-    return { error: describeAiError(error) };
+    return { error: describeImageError(error) };
   }
 }
 

@@ -91,8 +91,9 @@ export function TryOnPanel({
             </>
           ) : (
             <p className="mt-3 text-[13px] leading-relaxed text-muted">
-              <span className={pill("violet")}>Needs an image model</span> Try-on is ready, but Gemini doesn&rsquo;t include
-              image generation in its free tier. Set <code>GEMINI_IMAGE_MODEL</code> on the server to switch it on.
+              <span className={pill("violet")}>Needs an image model</span> Try-on is ready, but image generation isn&rsquo;t
+              free with any provider. Add an <code>OPENAI_API_KEY</code> on the server to switch it on with ChatGPT&rsquo;s
+              image model.
             </p>
           )}
           {state?.error && <p className="mt-3 text-sm text-danger" role="alert">{state.error}</p>}

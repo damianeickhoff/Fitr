@@ -6,7 +6,8 @@ import { z } from "zod";
 import { requireUser } from "./auth";
 import { db } from "./db";
 import { CATEGORY_KEYS, SEASONS } from "./garment";
-import { aiEnabled, describeAiError, generateImage, imageAiEnabled } from "./gemini";
+import { aiEnabled, describeAiError } from "./gemini";
+import { describeImageError, generateImage, imageAiEnabled } from "./image-gen";
 import { makeListing, normalisePhoto, toJpeg, type Box } from "./images";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { detectItems } from "./vision";
@@ -193,13 +194,13 @@ export async function deleteItem(id: string) {
 }
 
 /**
- * Re-shoots the listing as a clean product photo with an image model. Paid on
- * Gemini, so it is only offered when GEMINI_IMAGE_MODEL is set.
+ * Re-shoots the listing as a clean product photo with an image model. Paid with
+ * every provider, so it is only offered when one is set up (see image-gen.ts).
  */
 export async function makeStudioPhoto(id: string): Promise<{ error?: string }> {
   const user = await requireUser();
   const item = await ownItem(user.id, id);
-  if (!imageAiEnabled()) return { error: "Studio photos need GEMINI_IMAGE_MODEL to be set." };
+  if (!imageAiEnabled()) return { error: "Studio photos need an image model. Add an OPENAI_API_KEY." };
   try {
     const source = await readStored(item.imagePath);
     const result = await generateImage(
@@ -221,6 +222,6 @@ export async function makeStudioPhoto(id: string): Promise<{ error?: string }> {
     revalidatePath("/", "layout");
     return {};
   } catch (error) {
-    return { error: describeAiError(error) };
+    return { error: describeImageError(error) };
   }
 }

@@ -8,7 +8,7 @@ import { CATEGORY_TONE, button, cx, pill, toneFor } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CATEGORIES, FORMALITY, isCategory, parseList } from "@/lib/garment";
-import { imageAiEnabled } from "@/lib/gemini";
+import { imageAiEnabled } from "@/lib/image-gen";
 import { imageUrl } from "@/lib/storage-url";
 import { wardrobeNotes } from "@/lib/wardrobe";
 
