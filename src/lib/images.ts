@@ -1,13 +1,9 @@
 import "server-only";
 import sharp from "sharp";
 import { removeBackground } from "./cutout";
+import { LISTING_HEIGHT, LISTING_WIDTH, framedCutout } from "./framing";
 
-/** Listing images are portrait, like a shop's product grid. */
-export const LISTING_WIDTH = 900;
-export const LISTING_HEIGHT = 1125;
-
-/** The light grey every cut-out sits on, so white pieces never vanish. */
-const GROUND = { r: 243, g: 244, b: 246, alpha: 1 };
+export { LISTING_HEIGHT, LISTING_WIDTH, framedCutout } from "./framing";
 
 /**
  * Upright, capped at 2000px and re-encoded, so every stored photo is a sane
@@ -57,40 +53,6 @@ export async function blurredListing(crop: Buffer) {
     .resize(LISTING_WIDTH - 60, LISTING_HEIGHT - 60, { fit: "inside" })
     .toBuffer();
   return sharp(backdrop).composite([{ input: subject, gravity: "center" }]).jpeg({ quality: 86 }).toBuffer();
-}
-
-/**
- * A transparent cut-out framed as a product shot: centred on the light grey
- * ground with a soft contact shadow made from its own silhouette.
- */
-export async function framedCutout(png: Buffer) {
-  const subject = await sharp(png)
-    .resize(Math.round(LISTING_WIDTH * 0.8), Math.round(LISTING_HEIGHT * 0.8), { fit: "inside" })
-    .png()
-    .toBuffer();
-  const meta = await sharp(subject).metadata();
-  const w = meta.width ?? 1;
-  const h = meta.height ?? 1;
-
-  const alpha = await sharp(subject).extractChannel("alpha").linear(0.22, 0).toBuffer();
-  const pad = 40;
-  const shadow = await sharp({ create: { width: w, height: h, channels: 3, background: { r: 40, g: 44, b: 60 } } })
-    .joinChannel(alpha)
-    .extend({ top: pad, bottom: pad, left: pad, right: pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .blur(14)
-    .png()
-    .toBuffer();
-
-  const left = Math.round((LISTING_WIDTH - w) / 2);
-  const top = Math.round((LISTING_HEIGHT - h) / 2);
-  return sharp({ create: { width: LISTING_WIDTH, height: LISTING_HEIGHT, channels: 4, background: GROUND } })
-    .composite([
-      { input: shadow, left: left - pad + 6, top: top - pad + 14 },
-      { input: subject, left, top },
-    ])
-    .flatten({ background: GROUND })
-    .jpeg({ quality: 86 })
-    .toBuffer();
 }
 
 /**

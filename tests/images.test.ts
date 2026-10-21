@@ -54,7 +54,7 @@ describe("listing frames", () => {
     expect([meta.width, meta.height]).toEqual([LISTING_WIDTH, LISTING_HEIGHT]);
   });
 
-  it("centres a transparent cut-out on the light grey ground", async () => {
+  it("centres a transparent cut-out on the sand ground", async () => {
     const cutout = await sharp({ create: { width: 300, height: 400, channels: 4, background: { r: 20, g: 40, b: 200, alpha: 1 } } })
       .png()
       .toBuffer();
@@ -62,7 +62,8 @@ describe("listing frames", () => {
     const meta = await sharp(framed).metadata();
     expect([meta.width, meta.height]).toEqual([LISTING_WIDTH, LISTING_HEIGHT]);
     const { data: corner } = await sharp(framed).extract({ left: 2, top: 2, width: 1, height: 1 }).raw().toBuffer({ resolveWithObject: true });
-    expect([...corner]).toEqual([243, 244, 246]);
+    // JPEG rounding moves a channel by one; the ground is #efe8db.
+    for (const [n, v] of [239, 232, 219].entries()) expect(Math.abs(corner[n] - v)).toBeLessThanOrEqual(2);
     const { data: centre } = await sharp(framed)
       .extract({ left: Math.floor(LISTING_WIDTH / 2), top: Math.floor(LISTING_HEIGHT / 2), width: 1, height: 1 })
       .raw()
