@@ -22,6 +22,18 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   the client.
 - `src/generated/prisma` — generated, gitignored.
 
+## Profiles, language, colour
+
+- One account (sign-in) holds several profiles; a profile owns the wardrobe.
+  Pages and actions call `requireProfile()` and filter by `profileId`; files on
+  disk still live under the user's id. The chosen profile is a plain cookie.
+- Every sentence lives in `src/lib/i18n.ts` (English and Dutch, typed against
+  each other). Server code: `translator(profileLocale(profile))`; client
+  components: `useT()`. AI prompts get the locale and answer in it.
+- The accent colour is per profile, set on `<html>` as `--accent` by the root
+  layout; use `bg-accent`/`text-accent`, never a hex. It must carry white
+  text (`accentIsReadable` in `src/lib/colour.ts`).
+
 ## Conventions
 
 - British English in code and copy: colour, favourite, normalise.
@@ -38,9 +50,10 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that
   `PhoneStage` centres on wide screens. Don't add desktop breakpoints.
-- No tags or monospace caps labels: status and categories are colourful pills
-  (`pill()` in `src/components/ui.ts`), notes appear only when they say
-  something (`src/lib/wardrobe.ts`).
+- Warm paper look: cream page, near-white `panel`/`card` surfaces edged with a
+  hairline (`src/components/ui.ts`), Nunito, a floating pill nav. No tags or
+  monospace caps labels: status and categories are colourful pills (`pill()`),
+  notes appear only when they say something (`src/lib/wardrobe.ts`).
 - Exactly one copy of sharp may load: two libvips builds in one process crash
   it natively. `overrides` in package.json points the background remover at
   ours; `tests/images.test.ts` runs both together to catch a regression.

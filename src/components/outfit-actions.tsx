@@ -3,17 +3,24 @@
 import { Bookmark, Shirt, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { deleteOutfit, toggleSaved, woreOutfit } from "@/lib/outfit-actions";
+import { useT } from "./locale";
 import { button, cx } from "./ui";
 
 export function OutfitActions({ id, saved }: { id: string; saved: boolean }) {
+  const t = useT();
   const [pending, start] = useTransition();
   const [worn, setWorn] = useState(false);
 
   return (
     <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={pending} onClick={() => start(() => toggleSaved(id))} className={saved ? button.secondary : cx(button.primary, "py-2.5 text-sm")}>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => start(() => toggleSaved(id))}
+        className={saved ? button.secondary : cx(button.primary, "py-2.5 text-sm")}
+      >
         <Bookmark size={16} className={cx(saved && "fill-current")} />
-        {saved ? "Saved" : "Save look"}
+        {saved ? t("outfit.saved") : t("outfit.save")}
       </button>
       <button
         type="button"
@@ -26,16 +33,16 @@ export function OutfitActions({ id, saved }: { id: string; saved: boolean }) {
         }
         className={button.secondary}
       >
-        <Shirt size={16} /> {worn ? "Logged for today" : "Wearing it today"}
+        <Shirt size={16} /> {worn ? t("outfit.logged") : t("outfit.wearing")}
       </button>
       <button
         type="button"
         disabled={pending}
         onClick={() => {
-          if (confirm("Delete this outfit? The pieces stay in your wardrobe.")) start(() => deleteOutfit(id));
+          if (confirm(t("outfit.deleteConfirm"))) start(() => deleteOutfit(id));
         }}
         className={button.danger}
-        aria-label="Delete outfit"
+        aria-label={t("outfit.delete")}
       >
         <Trash2 size={16} />
       </button>

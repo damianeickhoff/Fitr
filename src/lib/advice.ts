@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Item } from "@/generated/prisma/client";
 import { CATEGORY_KEYS } from "./garment";
 import { generateJson } from "./gemini";
+import type { Locale } from "./i18n";
 import { catalogueLine } from "./outfits";
 
 const insightSchema = z.object({
@@ -35,12 +36,13 @@ const insightSchema = z.object({
 
 export type WardrobeInsight = z.infer<typeof insightSchema>;
 
-export async function analyseWardrobe(items: Item[], styleNotes: string | null): Promise<WardrobeInsight> {
+export async function analyseWardrobe(items: Item[], styleNotes: string | null, locale: Locale = "en"): Promise<WardrobeInsight> {
   const prompt = [
     `Wardrobe (${items.length} pieces):`,
     ...items.map(catalogueLine),
     styleNotes ? `\nThe client's taste: ${styleNotes}` : "",
-    "\nAnalyse this wardrobe as their personal stylist. Recommend purchases that fit their existing style and would combine with many pieces they already own — not a generic capsule list. Be specific about colour and material. Use only ids from the list. British English.",
+    "\nAnalyse this wardrobe as their personal stylist. Recommend purchases that fit their existing style and would combine with many pieces they already own — not a generic capsule list. Be specific about colour and material. Use only ids from the list. " +
+      (locale === "nl" ? "Write everything in Dutch." : "British English."),
   ].join("\n");
   const insight = await generateJson({ prompt, schema: insightSchema });
 

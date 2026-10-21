@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireUser } from "./auth";
+import { requireProfile } from "./auth";
 import { db } from "./db";
 import { CATEGORY_KEYS, SEASONS } from "./garment";
 import { aiEnabled, describeAiError } from "./gemini";
+import { translator } from "./i18n";
 import { describeImageError, generateImage, imageAiEnabled } from "./image-gen";
 import { makeListing, normalisePhoto, toJpeg, type Box } from "./images";
+import { profileLocale } from "./locale";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { detectItems } from "./vision";
 
@@ -35,26 +37,28 @@ const MAX_UPLOAD = 15 * 1024 * 1024;
  * upload is never lost to an AI hiccup.
  */
 export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
-  const user = await requireUser();
+  const { user, profile } = await requireProfile();
+  const locale = profileLocale(profile);
+  const t = translator(locale);
   const file = form.get("photo");
-  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Choose a photo to add." };
-  if (file.size > MAX_UPLOAD) return { ok: false, error: "That photo is over 15 MB. Try a smaller one." };
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: t("err.choosePhoto") };
+  if (file.size > MAX_UPLOAD) return { ok: false, error: t("err.tooLarge") };
 
   let photo;
   try {
     photo = await normalisePhoto(Buffer.from(await file.arrayBuffer()));
   } catch {
-    return { ok: false, error: "That file isn't a photo Fitr can read. Use a JPEG or PNG." };
+    return { ok: false, error: t("err.notPhoto") };
   }
   const photoPath = await saveFile(user.id, photo.data, "photo");
 
   let warning: string | undefined;
   if (aiEnabled()) {
     try {
-      const detected = await detectItems(photo.data);
+      const detected = await detectItems(photo.data, locale);
       if (detected.length === 0) {
         await deleteStored(photoPath);
-        return { ok: false, error: "No clothing found in that photo. Try one with the piece clearly in frame." };
+        return { ok: false, error: t("err.noClothing") };
       }
       const created: AddedItem[] = [];
       for (const d of detected) {
@@ -62,6 +66,7 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
         const item = await db.item.create({
           data: {
             userId: user.id,
+            profileId: profile.id,
             name: d.name,
             category: d.category,
             subcategory: d.subcategory || null,
@@ -90,14 +95,15 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
       revalidatePath("/", "layout");
       return { ok: true, items: created };
     } catch (error) {
-      warning = `${describeAiError(error)} Saved it untagged — fill in the details yourself.`;
+      warning = `${describeAiError(error)} ${t("err.untagged")}`;
     }
   }
 
   const item = await db.item.create({
     data: {
       userId: user.id,
-      name: "New piece",
+      profileId: profile.id,
+      name: t("common.new"),
       category: "top",
       photoPath,
       ...(await saveImages(user.id, photo)),
@@ -107,12 +113,12 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
   return {
     ok: true,
     items: [{ id: item.id, name: item.name, imagePath: item.imagePath, category: item.category, colors: [] }],
-    warning: warning ?? "Saved without AI tagging. Add a GEMINI_API_KEY to tag photos automatically.",
+    warning: warning ?? t("err.noAiTag"),
   };
 }
 
-async function ownItem(userId: string, id: string) {
-  const item = await db.item.findFirst({ where: { id, userId } });
+async function ownItem(profileId: string, id: string) {
+  const item = await db.item.findFirst({ where: { id, profileId } });
   if (!item) throw new Error("Item not found.");
   return item;
 }
@@ -124,7 +130,7 @@ const splitWords = (value: string) =>
     .filter(Boolean);
 
 const editSchema = z.object({
-  name: z.string().trim().min(1, "Give the piece a name.").max(80),
+  name: z.string().trim().min(1, "err.itemName").max(80, "err.itemName"),
   category: z.enum(CATEGORY_KEYS),
   subcategory: z.string().trim().max(60),
   brand: z.string().trim().max(60),
@@ -139,10 +145,14 @@ const editSchema = z.object({
 export type EditState = { error?: string; saved?: boolean } | undefined;
 
 export async function updateItem(id: string, _: EditState, form: FormData): Promise<EditState> {
-  const user = await requireUser();
-  await ownItem(user.id, id);
+  const { profile } = await requireProfile();
+  await ownItem(profile.id, id);
   const parsed = editSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) {
+    const t = translator(profileLocale(profile));
+    const issue = parsed.error.issues[0];
+    return { error: issue.message === "err.itemName" ? t("err.itemName") : issue.message };
+  }
   const v = parsed.data;
   const seasons = form.getAll("seasons").filter((s): s is (typeof SEASONS)[number] =>
     (SEASONS as readonly string[]).includes(String(s)),
@@ -169,22 +179,22 @@ export async function updateItem(id: string, _: EditState, form: FormData): Prom
 }
 
 export async function toggleFavourite(id: string) {
-  const user = await requireUser();
-  const item = await ownItem(user.id, id);
+  const { profile } = await requireProfile();
+  const item = await ownItem(profile.id, id);
   await db.item.update({ where: { id }, data: { favourite: !item.favourite } });
   revalidatePath("/", "layout");
 }
 
 export async function markWorn(id: string) {
-  const user = await requireUser();
-  await ownItem(user.id, id);
+  const { profile } = await requireProfile();
+  await ownItem(profile.id, id);
   await db.item.update({ where: { id }, data: { wearCount: { increment: 1 }, lastWornAt: new Date() } });
   revalidatePath("/", "layout");
 }
 
 export async function deleteItem(id: string) {
-  const user = await requireUser();
-  const item = await ownItem(user.id, id);
+  const { profile } = await requireProfile();
+  const item = await ownItem(profile.id, id);
   await db.item.delete({ where: { id } });
   // Several items can share one original photo; only remove it with the last.
   const sharing = await db.item.count({ where: { photoPath: item.photoPath } });
@@ -198,9 +208,9 @@ export async function deleteItem(id: string) {
  * every provider, so it is only offered when one is set up (see image-gen.ts).
  */
 export async function makeStudioPhoto(id: string): Promise<{ error?: string }> {
-  const user = await requireUser();
-  const item = await ownItem(user.id, id);
-  if (!imageAiEnabled()) return { error: "Studio photos need an image model. Add an OPENAI_API_KEY." };
+  const { user, profile } = await requireProfile();
+  const item = await ownItem(profile.id, id);
+  if (!imageAiEnabled()) return { error: translator(profileLocale(profile))("err.studioKey") };
   try {
     const source = await readStored(item.imagePath);
     const result = await generateImage(

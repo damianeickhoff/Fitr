@@ -3,9 +3,11 @@
 import { Heart, Shirt, Trash2, Wand2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { deleteItem, makeStudioPhoto, markWorn, toggleFavourite } from "@/lib/item-actions";
+import { useT } from "./locale";
 import { button, cx } from "./ui";
 
 export function ItemActions({ id, favourite, studio }: { id: string; favourite: boolean; studio: boolean }) {
+  const t = useT();
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -13,8 +15,8 @@ export function ItemActions({ id, favourite, studio }: { id: string; favourite: 
     <div className="mt-6">
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={pending} onClick={() => start(() => toggleFavourite(id))} className={button.secondary}>
-          <Heart size={16} className={cx(favourite && "fill-[#e0457b] text-[#e0457b]")} />
-          {favourite ? "Favourite" : "Add to favourites"}
+          <Heart size={16} className={cx(favourite && "fill-[#c9365f] text-[#c9365f]")} />
+          {favourite ? t("common.favourite") : t("actions.addFavourite")}
         </button>
         <button
           type="button"
@@ -22,12 +24,12 @@ export function ItemActions({ id, favourite, studio }: { id: string; favourite: 
           onClick={() =>
             start(async () => {
               await markWorn(id);
-              setMessage("Logged as worn today.");
+              setMessage(t("actions.loggedWorn"));
             })
           }
           className={button.secondary}
         >
-          <Shirt size={16} /> Wore it today
+          <Shirt size={16} /> {t("actions.woreToday")}
         </button>
         {studio && (
           <button
@@ -35,28 +37,32 @@ export function ItemActions({ id, favourite, studio }: { id: string; favourite: 
             disabled={pending}
             onClick={() =>
               start(async () => {
-                setMessage("Re-shooting as a studio photo…");
+                setMessage(t("actions.studioWorking"));
                 const result = await makeStudioPhoto(id);
-                setMessage(result.error ?? "Studio photo ready.");
+                setMessage(result.error ?? t("actions.studioReady"));
               })
             }
             className={button.secondary}
           >
-            <Wand2 size={16} /> Studio photo
+            <Wand2 size={16} /> {t("actions.studio")}
           </button>
         )}
         <button
           type="button"
           disabled={pending}
           onClick={() => {
-            if (confirm("Remove this piece from your wardrobe? Outfits that use it lose it too.")) start(() => deleteItem(id));
+            if (confirm(t("actions.removeConfirm"))) start(() => deleteItem(id));
           }}
           className={button.danger}
         >
-          <Trash2 size={16} /> Remove
+          <Trash2 size={16} /> {t("actions.remove")}
         </button>
       </div>
-      {message && <p className="mt-2 text-sm text-muted" role="status">{message}</p>}
+      {message && (
+        <p className="mt-2 text-sm font-semibold text-muted" role="status">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

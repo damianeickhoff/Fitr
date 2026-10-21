@@ -8,8 +8,9 @@ import { shrinkImage } from "@/lib/client-image";
 import { addTryOnFromApp, deleteTryOn, tryOn } from "@/lib/outfit-actions";
 import { imageUrl } from "@/lib/storage-url";
 import { SOURCE_LABEL, tryOnPrompt, type TryOnSource } from "@/lib/try-on";
+import { useT } from "./locale";
 import { SubmitButton } from "./submit-button";
-import { button, cx, pill } from "./ui";
+import { button, cx, panel, pill } from "./ui";
 
 type Photo = { id: string; path: string };
 type Result = Photo & { source: string };
@@ -29,26 +30,28 @@ export function TryOnPanel({
   results: Result[];
   pieces: Piece[];
 }) {
+  const t = useT();
   const [state, action] = useActionState(tryOn.bind(null, outfitId), undefined);
   const [chosen, setChosen] = useState(selfPhotos[0]?.id ?? "");
   const [pending, start] = useTransition();
   const chosenPhoto = selfPhotos.find((p) => p.id === chosen);
+  const [keyBefore, keyAfter] = t("tryon.needKey").split("{key}");
 
   return (
-    <section className="mt-8 rounded-[22px] bg-ground p-4">
-      <h2 className="text-lg font-semibold">See it on you</h2>
+    <section className={cx(panel, "mt-8 p-4")}>
+      <h2 className="text-lg font-extrabold">{t("tryon.title")}</h2>
 
       {selfPhotos.length === 0 ? (
-        <p className="mt-1.5 text-sm text-muted">
-          <Link href="/me" className="font-semibold text-cobalt">
-            Add a photo of yourself
+        <p className="mt-1.5 text-sm font-semibold text-muted">
+          <Link href="/me" className="font-bold text-accent">
+            {t("tryon.addPhoto")}
           </Link>{" "}
-          first: full length, facing the camera, in good light.
+          {t("tryon.addPhotoRest")}
         </p>
       ) : (
         <>
           <fieldset className="mt-3">
-            <legend className="mb-2 text-[13px] text-muted">Which photo of you?</legend>
+            <legend className="mb-2 text-[13px] font-semibold text-muted">{t("tryon.which")}</legend>
             <div className="no-scrollbar flex gap-2 overflow-x-auto">
               {selfPhotos.map((p) => (
                 <label key={p.id} className="shrink-0 cursor-pointer">
@@ -63,8 +66,8 @@ export function TryOnPanel({
                   {/* eslint-disable-next-line @next/next/no-img-element -- private self photo */}
                   <img
                     src={imageUrl(p.path)}
-                    alt="Photo of you"
-                    className="h-24 w-[72px] rounded-xl object-cover object-top opacity-60 ring-2 ring-transparent transition peer-checked:opacity-100 peer-checked:ring-cobalt peer-focus-visible:ring-cobalt"
+                    alt={t("tryon.you")}
+                    className="h-24 w-[72px] rounded-xl object-cover object-top opacity-60 ring-2 ring-transparent transition peer-checked:opacity-100 peer-checked:ring-accent peer-focus-visible:ring-accent"
                   />
                 </label>
               ))}
@@ -75,8 +78,8 @@ export function TryOnPanel({
             <div className="mt-3 flex gap-2.5">
               <div className="relative h-72 flex-1 overflow-hidden rounded-2xl bg-paper">
                 {/* eslint-disable-next-line @next/next/no-img-element -- private self photo */}
-                <img src={imageUrl(chosenPhoto.path)} alt="You, before" className="h-full w-full object-cover object-top" />
-                <span className={cx("absolute bottom-2.5 left-2.5", pill("frost", "md"))}>Before</span>
+                <img src={imageUrl(chosenPhoto.path)} alt={t("tryon.before")} className="h-full w-full object-cover object-top" />
+                <span className={cx("absolute bottom-2.5 left-2.5", pill("frost", "md"))}>{t("tryon.before")}</span>
               </div>
               <div className="flex w-[68px] flex-col gap-1.5">
                 {pieces.slice(0, 4).map((p) => (
@@ -90,20 +93,22 @@ export function TryOnPanel({
           {/* Route 1: one tap, paid per image through an API key. */}
           <div className="mt-4 rounded-2xl bg-paper p-3.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">One tap</p>
-              <span className={pill(apiLabel ? "violet" : "grey")}>{apiLabel ? `${apiLabel} · paid per image` : "Not set up"}</span>
+              <p className="text-sm font-bold">{t("tryon.oneTap")}</p>
+              <span className={pill(apiLabel ? "violet" : "grey")}>{apiLabel ? t("tryon.paid", { label: apiLabel }) : t("tryon.notSetUp")}</span>
             </div>
             {apiLabel ? (
               <form action={action}>
                 <input type="hidden" name="selfPhoto" value={chosen} />
-                <SubmitButton className="mt-3 w-full" pending="Dressing you… this takes a moment">
-                  Try it on
+                <SubmitButton className="mt-3 w-full" pending={t("tryon.dressing")}>
+                  {t("tryon.tryIt")}
                 </SubmitButton>
-                {state?.error && <p className="mt-2 text-sm text-danger" role="alert">{state.error}</p>}
+                {state?.error && <p className="mt-2 text-sm font-semibold text-danger" role="alert">{state.error}</p>}
               </form>
             ) : (
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-                Add an <code>OPENAI_API_KEY</code> on the server and FITR makes the picture for you in one tap.
+              <p className="mt-1.5 text-[13px] leading-relaxed font-semibold text-muted">
+                {keyBefore}
+                <code>OPENAI_API_KEY</code>
+                {keyAfter}
               </p>
             )}
           </div>
@@ -118,16 +123,16 @@ export function TryOnPanel({
           {results.map((r) => (
             <figure key={r.id} className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element -- private try-on render */}
-              <img src={imageUrl(r.path)} alt="You wearing this outfit" className="w-full rounded-2xl object-cover" />
+              <img src={imageUrl(r.path)} alt={t("tryon.result")} className="w-full rounded-2xl object-cover" />
               <span className={cx("absolute bottom-2 left-2", pill(r.source === "chatgpt-app" ? "green" : "violet"))}>
-                {SOURCE_LABEL[r.source as TryOnSource] ?? "Try-on"}
+                {SOURCE_LABEL[r.source as TryOnSource] ?? t("tryon.label")}
               </span>
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => start(() => deleteTryOn(r.id))}
                 className={cx(button.secondary, "absolute top-2 right-2 size-9 p-0")}
-                aria-label="Delete this try-on"
+                aria-label={t("tryon.delete")}
               >
                 <Trash2 size={15} />
               </button>
@@ -140,6 +145,7 @@ export function TryOnPanel({
 }
 
 function ChatGptAppRoute({ outfitId, photo, pieces }: { outfitId: string; photo: Photo; pieces: Piece[] }) {
+  const t = useT();
   // Prepared ahead of the tap: a share sheet only opens straight from one.
   const [kit, setKit] = useState<{ forPhoto: string; kit: HandoffKit } | null>(null);
   const [sent, setSent] = useState<"shared" | "fallback" | null>(null);
@@ -148,6 +154,7 @@ function ChatGptAppRoute({ outfitId, photo, pieces }: { outfitId: string; photo:
   const fileInput = useRef<HTMLInputElement>(null);
   const prompt = tryOnPrompt(pieces.map((p) => p.name));
   const ready = kit?.forPhoto === photo.id ? kit.kit : null;
+  const [fallbackBefore, fallbackAfter] = t("tryon.fallback").split("{file}");
 
   useEffect(() => {
     let current = true;
@@ -156,11 +163,11 @@ function ChatGptAppRoute({ outfitId, photo, pieces }: { outfitId: string; photo:
       pieces.map((p) => ({ name: p.name, url: imageUrl(p.imagePath) })),
     )
       .then((k) => current && setKit({ forPhoto: photo.id, kit: k }))
-      .catch(() => current && setError("Couldn't load the photos to send. Reload the page and try again."));
+      .catch(() => current && setError(t("tryon.loadFailed")));
     return () => {
       current = false;
     };
-  }, [photo.id, photo.path, pieces]);
+  }, [photo.id, photo.path, pieces, t]);
 
   function upload(files: FileList | null) {
     const file = files?.[0];
@@ -178,12 +185,10 @@ function ChatGptAppRoute({ outfitId, photo, pieces }: { outfitId: string; photo:
   return (
     <div className="mt-2.5 rounded-2xl bg-paper p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">With your ChatGPT app</p>
-        <span className={pill("green")}>Free with ChatGPT Plus</span>
+        <p className="text-sm font-bold">{t("tryon.withApp")}</p>
+        <span className={pill("green")}>{t("tryon.free")}</span>
       </div>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-        Sends your photo, the pieces and a ready-made prompt to ChatGPT. Save the picture it makes, then add it here.
-      </p>
+      <p className="mt-1.5 text-[13px] leading-relaxed font-semibold text-muted">{t("tryon.appBody")}</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
@@ -192,15 +197,10 @@ function ChatGptAppRoute({ outfitId, photo, pieces }: { outfitId: string; photo:
           onClick={() => ready && setSent(sendToChatGpt(ready, prompt))}
           className={cx(button.dark, "px-3 py-2.5 text-sm")}
         >
-          <Send size={15} /> {ready ? "Send to ChatGPT" : "Preparing…"}
+          <Send size={15} /> {ready ? t("tryon.send") : t("tryon.preparing")}
         </button>
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => fileInput.current?.click()}
-          className={cx(button.secondary, "px-3 text-sm")}
-        >
-          <ImagePlus size={15} /> {uploading ? "Adding…" : "Add its picture"}
+        <button type="button" disabled={uploading} onClick={() => fileInput.current?.click()} className={cx(button.secondary, "px-3 text-sm")}>
+          <ImagePlus size={15} /> {uploading ? t("tryon.adding") : t("tryon.addPicture")}
         </button>
       </div>
       <input
@@ -215,21 +215,22 @@ function ChatGptAppRoute({ outfitId, photo, pieces }: { outfitId: string; photo:
       />
 
       {sent === "shared" && (
-        <p className="mt-2.5 text-[13px] leading-relaxed text-[#17693b]" role="status">
-          Pick ChatGPT in the share menu. The prompt is also copied, in case it doesn&rsquo;t come along: paste it in.
+        <p className="mt-2.5 text-[13px] leading-relaxed font-semibold text-[#1d6b3a]" role="status">
+          {t("tryon.shared")}
         </p>
       )}
       {sent === "fallback" && (
-        <p className="mt-2.5 text-[13px] leading-relaxed text-[#17693b]" role="status">
-          The prompt is copied and the photos are saved as <strong>fitr-try-on.jpg</strong>. In the ChatGPT tab, attach that
-          picture, paste the prompt and send.
+        <p className="mt-2.5 text-[13px] leading-relaxed font-semibold text-[#1d6b3a]" role="status">
+          {fallbackBefore}
+          <strong>fitr-try-on.jpg</strong>
+          {fallbackAfter}
         </p>
       )}
-      {error && <p className="mt-2.5 text-sm text-danger" role="alert">{error}</p>}
+      {error && <p className="mt-2.5 text-sm font-semibold text-danger" role="alert">{error}</p>}
 
       <details className="mt-2.5 text-[13px]">
-        <summary className="cursor-pointer font-semibold text-muted">See the prompt</summary>
-        <p className="mt-1.5 rounded-xl bg-ground p-3 leading-relaxed whitespace-pre-line text-[#3d4252]">{prompt}</p>
+        <summary className="cursor-pointer font-bold text-muted">{t("tryon.seePrompt")}</summary>
+        <p className="mt-1.5 rounded-xl bg-ground p-3 leading-relaxed whitespace-pre-line text-[#3f3931] ring-1 ring-line ring-inset">{prompt}</p>
       </details>
     </div>
   );

@@ -1,75 +1,130 @@
-import { LogOut } from "lucide-react";
+import { ChevronRight, Globe, LogOut } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { DeleteProfile, ProfileSwitcher } from "@/components/profile-switcher";
 import { SelfPhotos } from "@/components/self-photos";
 import { StyleNotes } from "@/components/style-notes";
-import { button, pill } from "@/components/ui";
-import { requireUser } from "@/lib/auth";
+import { button, cx, panel, pill } from "@/components/ui";
+import { requireProfile } from "@/lib/auth";
 import { signOut } from "@/lib/auth-actions";
 import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
+import { LANGUAGE_NAMES, translator } from "@/lib/i18n";
 import { imageModelLabel } from "@/lib/image-gen";
+import { profileLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Me" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { profile } = await requireProfile();
+  return { title: translator(profileLocale(profile))("nav.me") };
+}
 
 export default async function MePage() {
-  const user = await requireUser();
-  const photos = await db.selfPhoto.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } });
+  const { user, profile } = await requireProfile();
+  const locale = profileLocale(profile);
+  const t = translator(locale);
+  const [photos, profiles, pieces, outfits] = await Promise.all([
+    db.selfPhoto.findMany({ where: { profileId: profile.id }, orderBy: { createdAt: "desc" } }),
+    db.profile.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "asc" },
+      include: { _count: { select: { items: true } } },
+    }),
+    db.item.count({ where: { profileId: profile.id } }),
+    db.outfit.count({ where: { profileId: profile.id, saved: true } }),
+  ]);
 
   const status = [
     {
-      name: "Photo tagging, outfits and advice",
+      name: t("me.aiTagging"),
       on: aiEnabled(),
-      detail: aiEnabled() ? process.env.GEMINI_MODEL || "gemini-3.8-flash" : "Add GEMINI_API_KEY",
+      detail: aiEnabled() ? process.env.GEMINI_MODEL || "gemini-3.8-flash" : t("me.addKey", { key: "GEMINI_API_KEY" }),
     },
     {
-      name: "Studio photos and try-on",
+      name: t("me.aiStudio"),
       on: imageModelLabel() !== null,
-      detail: imageModelLabel() ?? "Add OPENAI_API_KEY (paid)",
+      detail: imageModelLabel() ?? t("me.addKey", { key: "OPENAI_API_KEY" }),
     },
-    { name: "Cutting out photos", on: true, detail: "Runs on your server, free" },
+    { name: t("me.aiCutout"), on: true, detail: t("me.aiCutoutDetail") },
   ];
+
+  const row = "flex items-center gap-3 border-b border-line py-3 last:border-0";
 
   return (
     <>
-      <p className="text-[13px] font-medium text-muted">{user.email}</p>
-      <h1 className="mt-1 text-[28px] font-semibold tracking-tight">{user.name}</h1>
+      <p className="text-[13px] font-bold text-muted">{t("me.kicker")}</p>
+      <h1 className="mt-1 text-[28px] font-extrabold tracking-tight">{profile.name}</h1>
+      <p className="mt-1 text-[13px] font-semibold text-muted">
+        {t("me.summary", { pieces: t.count("wardrobe.pieces", pieces), outfits: t.count("me.outfits", outfits) })}
+      </p>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Photos of you</h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted">
-          For trying outfits on. Full length, facing the camera, in good light. Only you can see them.
-        </p>
+        <h2 className="text-lg font-extrabold">{t("me.switch")}</h2>
+        <p className="mt-1 text-sm leading-relaxed font-semibold text-muted">{t("me.switchBody")}</p>
+        <ProfileSwitcher
+          profiles={profiles.map((p) => ({ id: p.id, name: p.name, accent: p.accent, pieces: p._count.items, current: p.id === profile.id }))}
+        />
+      </section>
+
+      <section className="mt-7">
+        <h2 className="text-lg font-extrabold">{t("me.appearance")}</h2>
+        <div className={cx(panel, "mt-3 px-4")}>
+          <Link href="/me/appearance" className={row}>
+            <span className="size-10 shrink-0 rounded-xl" style={{ background: profile.accent }} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold">{t("me.accent")}</span>
+              <span className="block text-[12.5px] font-semibold text-muted">{t("me.accentHint")}</span>
+            </span>
+            <ChevronRight size={18} strokeWidth={2.4} className="text-muted" />
+          </Link>
+          <Link href="/me/appearance#language" className={row}>
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-paper text-ink ring-1 ring-line ring-inset">
+              <Globe size={20} strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold">{t("me.language")}</span>
+              <span className="block text-[12.5px] font-semibold text-muted">{LANGUAGE_NAMES[locale]}</span>
+            </span>
+            <ChevronRight size={18} strokeWidth={2.4} className="text-muted" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-7">
+        <h2 className="text-lg font-extrabold">{t("me.photos")}</h2>
+        <p className="mt-1 text-sm leading-relaxed font-semibold text-muted">{t("me.photosBody")}</p>
         <SelfPhotos photos={photos.map((p) => ({ id: p.id, path: p.path }))} />
       </section>
 
       <section className="mt-7">
-        <h2 className="text-lg font-semibold">Your style</h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted">
-          Tell the stylist what you like and what you avoid. It reads this before every outfit and shop tip.
-        </p>
-        <StyleNotes initial={user.styleNotes ?? ""} />
+        <h2 className="text-lg font-extrabold">{t("me.style")}</h2>
+        <p className="mt-1 text-sm leading-relaxed font-semibold text-muted">{t("me.styleBody")}</p>
+        <StyleNotes initial={profile.styleNotes ?? ""} />
       </section>
 
       <section className="mt-7">
-        <h2 className="text-lg font-semibold">AI</h2>
-        <ul className="mt-2.5 rounded-2xl bg-ground px-4 py-1">
+        <h2 className="text-lg font-extrabold">{t("me.ai")}</h2>
+        <ul className={cx(panel, "mt-2.5 px-4 py-1")}>
           {status.map((s) => (
             <li key={s.name} className="flex items-center justify-between gap-3 border-b border-line py-3 last:border-0">
               <span className="min-w-0">
-                <span className="block text-sm font-medium">{s.name}</span>
-                <span className="block truncate text-xs text-muted">{s.detail}</span>
+                <span className="block text-sm font-bold">{s.name}</span>
+                <span className="block truncate text-xs font-semibold text-muted">{s.detail}</span>
               </span>
-              <span className={pill(s.on ? "green" : "amber")}>{s.on ? "On" : "Off"}</span>
+              <span className={pill(s.on ? "green" : "amber")}>{s.on ? t("me.on") : t("me.off")}</span>
             </li>
           ))}
         </ul>
       </section>
 
-      <form action={signOut} className="mt-7">
-        <button type="submit" className={button.secondary}>
-          <LogOut size={16} /> Sign out
-        </button>
-      </form>
+      <div className="mt-7 flex flex-wrap items-start gap-3">
+        <form action={signOut}>
+          <button type="submit" className={button.secondary}>
+            <LogOut size={16} /> {t("me.signOut")}
+          </button>
+        </form>
+        {profiles.length > 1 && <DeleteProfile />}
+      </div>
+      <p className="mt-3 text-xs font-semibold text-muted">{user.email}</p>
     </>
   );
 }

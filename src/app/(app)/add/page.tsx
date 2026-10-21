@@ -1,22 +1,29 @@
 import type { Metadata } from "next";
 import { AddPhotos } from "@/components/add-photos";
+import { requireProfile } from "@/lib/auth";
 import { aiEnabled } from "@/lib/gemini";
+import { translator } from "@/lib/i18n";
+import { profileLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Add pieces" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { profile } = await requireProfile();
+  return { title: translator(profileLocale(profile))("nav.add") };
+}
 
-export default function AddPage() {
+export default async function AddPage() {
+  const { profile } = await requireProfile();
+  const t = translator(profileLocale(profile));
+  const [before, after] = t("add.aiOff").split("{key}");
   return (
     <>
-      <p className="text-[13px] font-medium text-muted">Add to your wardrobe</p>
-      <h1 className="mt-1 text-[28px] leading-tight font-semibold tracking-tight">Snap it, we&rsquo;ll list it</h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-muted">
-        Hang it on a door or lay it flat, with a plain background and good light. A photo of a whole outfit works too:
-        every piece gets its own listing.
-      </p>
+      <p className="text-[13px] font-bold text-muted">{t("add.kicker")}</p>
+      <h1 className="mt-1 text-[28px] leading-tight font-extrabold tracking-tight">{t("add.title")}</h1>
+      <p className="mt-2 text-[15px] leading-relaxed text-muted">{t("add.body")}</p>
       {!aiEnabled() && (
-        <p className="mt-4 rounded-xl bg-[#fdeccb] p-3 text-sm text-[#8a5300]">
-          AI tagging is off, so photos are cut out but saved untagged for you to fill in. Add a{" "}
-          <code>GEMINI_API_KEY</code> to have them named, categorised and described automatically.
+        <p className="mt-4 rounded-2xl bg-[#f6e6c6] p-3 text-sm font-semibold text-[#7d4b00]">
+          {before}
+          <code>GEMINI_API_KEY</code>
+          {after}
         </p>
       )}
       <AddPhotos />

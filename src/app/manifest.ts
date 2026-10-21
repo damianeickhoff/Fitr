@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Your wardrobe as a shop, with outfits and styling advice.",
     start_url: "/",
     display: "standalone",
-    background_color: "#eceef1",
-    theme_color: "#eceef1",
+    background_color: "#f7f2e9",
+    theme_color: "#f7f2e9",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
   };
 }

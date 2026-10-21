@@ -8,6 +8,7 @@ function item(category: string, colors: string[], extra: Partial<Item> = {}): It
   return {
     id: `i${n}`,
     userId: "u",
+    profileId: "p",
     name: `${colors[0]} ${category}`,
     category,
     subcategory: null,

@@ -1,31 +1,38 @@
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { LocaleProvider } from "@/components/locale";
 import { Nav } from "@/components/nav";
 import { Wordmark } from "@/components/wordmark";
-import { requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { imageUrl } from "@/lib/storage-url";
+import { requireProfile } from "@/lib/auth";
+import { translator } from "@/lib/i18n";
+import { profileLocale } from "@/lib/locale";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const user = await requireUser();
-  const avatar = await db.selfPhoto.findFirst({ where: { userId: user.id }, orderBy: { createdAt: "desc" } });
+  const { profile } = await requireProfile();
+  const locale = profileLocale(profile);
+  const t = translator(locale);
 
   return (
-    <>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-paper/95 px-4 backdrop-blur-md">
-        <Link href="/" aria-label="FITR wardrobe">
+    <LocaleProvider locale={locale}>
+      <header className="sticky top-0 z-30 flex h-[60px] items-center justify-between bg-paper/95 px-5 backdrop-blur-md">
+        <Link href="/" aria-label={t("header.wardrobe")}>
           <Wordmark />
         </Link>
-        <Link href="/me" aria-label="Your profile" className="block size-[34px] overflow-hidden rounded-full bg-ground">
-          {avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element -- private self photo
-            <img src={imageUrl(avatar.path)} alt="" className="h-full w-full object-cover object-top" />
-          ) : (
-            <span className="grid h-full w-full place-items-center text-sm font-semibold text-muted">{user.name.slice(0, 1)}</span>
-          )}
+        {/* The profile chip: who this wardrobe belongs to, and the way to the others. */}
+        <Link
+          href="/me"
+          aria-label={t("header.profile")}
+          className="flex items-center gap-1.5 rounded-full bg-ground py-1 pr-2.5 pl-1 text-[13px] font-bold ring-1 ring-line ring-inset"
+        >
+          <span className="grid size-7 place-items-center rounded-full bg-accent text-[12px] font-extrabold text-white">
+            {profile.name.slice(0, 1).toUpperCase()}
+          </span>
+          <span className="max-w-[110px] truncate">{profile.name}</span>
+          <ChevronDown size={14} strokeWidth={2.4} className="text-muted" />
         </Link>
       </header>
-      <main className="px-4 pt-5 pb-32">{children}</main>
+      <main className="px-5 pt-2 pb-32">{children}</main>
       <Nav />
-    </>
+    </LocaleProvider>
   );
 }

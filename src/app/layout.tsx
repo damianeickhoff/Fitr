@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Sans, Syncopate } from "next/font/google";
+import { Nunito } from "next/font/google";
 import { PhoneStage } from "@/components/phone-stage";
+import { getCurrentProfile } from "@/lib/auth";
+import { DEFAULT_ACCENT, isHex } from "@/lib/colour";
+import { currentLocale } from "@/lib/locale";
 import "./globals.css";
 
-const display = Syncopate({ variable: "--font-display", subsets: ["latin"], weight: ["700"] });
-const body = Instrument_Sans({ variable: "--font-body", subsets: ["latin"] });
+const body = Nunito({ variable: "--font-body", subsets: ["latin"], weight: ["500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: { default: "FITR", template: "%s · FITR" },
@@ -13,15 +15,21 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#f7f2e9",
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * The open profile's accent colour and language are set here, on <html>, so
+ * every page and the sign-in screen read them from CSS and `lang` alone.
+ */
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const [profile, locale] = await Promise.all([getCurrentProfile(), currentLocale()]);
+  const accent = profile && isHex(profile.accent) ? profile.accent : DEFAULT_ACCENT;
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} antialiased`}>
+    <html lang={locale} className={`${body.variable} antialiased`} style={{ "--accent": accent } as React.CSSProperties}>
       <body>
-        <PhoneStage>{children}</PhoneStage>
+        <PhoneStage locale={locale}>{children}</PhoneStage>
       </body>
     </html>
   );

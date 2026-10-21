@@ -14,16 +14,40 @@ model User {
   passwordHash String
   /// Bumped to revoke every session the account has signed.
   tokenVersion Int      @default(0)
-  /// Free text the user writes about their taste ("mostly black, hates
-  /// skinny jeans"). Sent with every outfit and advice prompt.
-  styleNotes   String?
   createdAt    DateTime @default(now())
+
+  profiles   Profile[]
+  items      Item[]
+  outfits    Outfit[]
+  selfPhotos SelfPhoto[]
+  tryOns     TryOn[]
+  insights   Insight[]
+}
+
+/// One person's wardrobe under a shared sign-in. A household signs in once;
+/// each member has a profile with its own pieces, outfits, taste, colour and
+/// language. There is no password between profiles, by design.
+model Profile {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  /// Hex of the accent colour: buttons, the add button, "never worn".
+  accent     String   @default("#7a2e2e")
+  /// "en" or "nl" (src/lib/i18n.ts).
+  locale     String   @default("en")
+  /// Free text about their taste ("mostly black, hates skinny jeans").
+  /// Sent with every outfit and advice prompt.
+  styleNotes String?
+  createdAt  DateTime @default(now())
 
   items      Item[]
   outfits    Outfit[]
   selfPhotos SelfPhoto[]
   tryOns     TryOn[]
   insights   Insight[]
+
+  @@index([userId])
 }
 
 /// One piece of clothing. A single photo can produce several items (a flat
@@ -32,6 +56,8 @@ model Item {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   name        String
   /// One of the keys in `CATEGORIES` (src/lib/garment.ts).
@@ -71,13 +97,15 @@ model Item {
 
   outfitItems OutfitItem[]
 
-  @@index([userId, category])
+  @@index([profileId, category])
 }
 
 model Outfit {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   name      String
   occasion  String?
   /// Why the pieces work together, in a sentence or two.
@@ -93,7 +121,7 @@ model Outfit {
   items  OutfitItem[]
   tryOns TryOn[]
 
-  @@index([userId, saved])
+  @@index([profileId, saved])
 }
 
 model OutfitItem {
@@ -111,6 +139,8 @@ model SelfPhoto {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   path      String
   createdAt DateTime @default(now())
 
@@ -121,6 +151,8 @@ model TryOn {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   outfitId    String
   outfit      Outfit    @relation(fields: [outfitId], references: [id], onDelete: Cascade)
   selfPhotoId String
@@ -139,6 +171,8 @@ model Insight {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   /// JSON `WardrobeInsight` (src/lib/advice.ts).
   content   String
   /// How many items the wardrobe had when this was written, to flag it stale.

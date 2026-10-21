@@ -3,12 +3,15 @@ import { z } from "zod";
 import type { Item } from "@/generated/prisma/client";
 import { FORMALITY, parseList, type Advice } from "./garment";
 import { generateJson } from "./gemini";
+import type { Locale } from "./i18n";
 
 export type OutfitRequest = {
   occasion: string;
   weather: string;
   notes: string;
   anchorItemId: string | null;
+  /** Build every look around a piece that has never been worn. */
+  unwornFirst?: boolean;
 };
 
 export type DraftOutfit = {
@@ -68,9 +71,9 @@ Advice for each outfit, 2–3 tips:
 - "add": an accessory, bag or layer from the wardrobe (give its itemId) that would lift the look.
 - "swap": an alternative wardrobe piece (give its itemId) for a different mood.
 - "buy": something the wardrobe lacks that would make this outfit sing; give a concrete shopFor search. Include at least one "buy" tip across the set when the wardrobe has a real gap.
-Write in British English.`;
+Write in the language asked for at the end of the prompt.`;
 
-export async function styleOutfits(items: Item[], request: OutfitRequest, styleNotes: string | null) {
+export async function styleOutfits(items: Item[], request: OutfitRequest, styleNotes: string | null, locale: Locale = "en") {
   const anchor = request.anchorItemId ? items.find((i) => i.id === request.anchorItemId) : null;
   const prompt = [
     `Wardrobe (${items.length} pieces):`,
@@ -81,8 +84,10 @@ export async function styleOutfits(items: Item[], request: OutfitRequest, styleN
     request.notes ? `The client says: ${request.notes}` : null,
     styleNotes ? `The client's taste: ${styleNotes}` : null,
     anchor ? `Every outfit must include id=${anchor.id} (${anchor.name}).` : null,
+    request.unwornFirst ? "Build each outfit around a different piece that has been worn 0 times; those are the point of this round." : null,
     "",
     "Put together 3 outfits.",
+    locale === "nl" ? "Write every name, reasoning and tip in Dutch." : "Write in British English.",
   ]
     .filter((line) => line !== null)
     .join("\n");
@@ -108,7 +113,9 @@ export function cleanOutfits(drafts: DraftOutfit[], items: Item[]): DraftOutfit[
     .filter((o) => o.itemIds.length >= 2);
 }
 
-const NEUTRALS = /black|white|grey|gray|navy|beige|cream|camel|tan|brown|denim|ecru|stone|khaki|charcoal/i;
+// English and Dutch colour words, since a Dutch profile's pieces are tagged in Dutch.
+const NEUTRALS =
+  /black|white|grey|gray|navy|beige|cream|camel|tan|brown|denim|ecru|stone|khaki|charcoal|zwart|wit|grijs|marine|crème|creme|bruin|steen|kaki|antraciet|zand/i;
 
 function seasonFor(weather: string) {
   if (/cold|freez|snow|winter/i.test(weather)) return "winter";
@@ -137,6 +144,8 @@ export function ruleOutfits(items: Item[], request: OutfitRequest, count = 3): D
   const shoes = pool("shoes");
   const outer = pool("outerwear");
   const anchor = items.find((i) => i.id === request.anchorItemId);
+  // Never-worn first when asked, so the simple matcher honours the overview's request too.
+  if (request.unwornFirst) for (const list of [tops, bottoms, dresses]) list.sort((a, b) => Number(a.wearCount > 0) - Number(b.wearCount > 0));
 
   const outfits: DraftOutfit[] = [];
   for (let n = 0; n < count * 4 && outfits.length < count; n++) {

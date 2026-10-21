@@ -48,9 +48,19 @@ function layout(pieces: FlatLayPiece[]) {
   });
 }
 
-export function FlatLay({ pieces, className, showLabels }: { pieces: FlatLayPiece[]; className?: string; showLabels?: boolean }) {
+export function FlatLay({
+  pieces,
+  className,
+  showLabels,
+  suggestedLabel = "+ Suggested",
+}: {
+  pieces: FlatLayPiece[];
+  className?: string;
+  showLabels?: boolean;
+  suggestedLabel?: string;
+}) {
   return (
-    <div className={cx("relative aspect-[4/5] overflow-hidden rounded-md bg-ground", className)}>
+    <div className={cx("relative aspect-[4/5] overflow-hidden rounded-[20px] bg-[#efe8db]", className)}>
       {layout(pieces).map(({ piece, slot }, n) => (
         <div
           key={piece.id}
@@ -63,12 +73,12 @@ export function FlatLay({ pieces, className, showLabels }: { pieces: FlatLayPiec
             alt={piece.name}
             className={cx(
               "block w-full object-contain transition",
-              piece.cutout ? "drop-shadow-[0_10px_12px_rgba(30,34,50,0.18)]" : "rounded-md",
+              piece.cutout ? "drop-shadow-[0_10px_12px_rgba(35,31,26,0.18)]" : "rounded-md",
               piece.suggested && "opacity-45",
             )}
             style={{ transform: `rotate(${slot.rotate}deg)` }}
           />
-          {showLabels && piece.suggested && <span className={cx("mt-1", pill("green"))}>+ Suggested</span>}
+          {showLabels && piece.suggested && <span className={cx("mt-1", pill("green"))}>{suggestedLabel}</span>}
         </div>
       ))}
     </div>

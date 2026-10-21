@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { CATEGORY_KEYS, SEASONS } from "./garment";
 import { generateJson } from "./gemini";
+import type { Locale } from "./i18n";
 
 const detectedItem = z.object({
   name: z.string().describe('Shop-listing title, 2–5 words, e.g. "Navy wool crewneck jumper"'),
@@ -30,11 +31,12 @@ const PROMPT = `This photo shows clothing from someone's own wardrobe. They want
 
 Find every distinct wearable piece that is clearly the subject of the photo: a garment laid flat or on a hanger, shoes, a bag, a belt, jewellery, a hat. If a person is wearing an outfit, list each visible piece they wear separately. Ignore furniture, hangers, mannequins, background clutter and pieces that are mostly out of frame. If there is no clothing at all, return an empty list.
 
-Describe what you can see; don't invent details. Use British English.`;
+Describe what you can see; don't invent details.`;
 
-export async function detectItems(photo: Buffer): Promise<DetectedItem[]> {
+export async function detectItems(photo: Buffer, locale: Locale = "en"): Promise<DetectedItem[]> {
   const result = await generateJson({
-    prompt: PROMPT,
+    // Names and descriptions in the wardrobe's language; colour words too, so the catalogue reads as one.
+    prompt: `${PROMPT} ${locale === "nl" ? "Write names, colours, materials, style words and descriptions in Dutch." : "Use British English."}`,
     schema: analysisSchema,
     images: [{ data: photo }],
   });

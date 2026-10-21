@@ -1,21 +1,23 @@
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Clock, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ItemActions } from "@/components/item-actions";
 import { ItemEditor } from "@/components/item-editor";
-import { CATEGORY_TONE, button, cx, pill, toneFor } from "@/components/ui";
-import { requireUser } from "@/lib/auth";
+import { CATEGORY_TONE, button, cx, panel, pill, toneFor } from "@/components/ui";
+import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CATEGORIES, FORMALITY, isCategory, parseList } from "@/lib/garment";
+import { isCategory, parseList } from "@/lib/garment";
+import { categoryLabel, formalityLabel, translator, type MessageKey } from "@/lib/i18n";
 import { imageAiEnabled } from "@/lib/image-gen";
+import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
-import { wardrobeNotes } from "@/lib/wardrobe";
+import { wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 async function load(id: string) {
-  const user = await requireUser();
+  const { profile } = await requireProfile();
   const item = await db.item.findFirst({
-    where: { id, userId: user.id },
+    where: { id, profileId: profile.id },
     include: {
       outfitItems: {
         include: { outfit: { include: { items: { include: { item: true } } } } },
@@ -23,7 +25,7 @@ async function load(id: string) {
     },
   });
   if (!item) notFound();
-  return { item, userId: user.id };
+  return { item, profile };
 }
 
 export async function generateMetadata({ params }: PageProps<"/item/[id]">): Promise<Metadata> {
@@ -32,11 +34,11 @@ export async function generateMetadata({ params }: PageProps<"/item/[id]">): Pro
 }
 
 export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
-  const { item, userId } = await load((await params).id);
+  const { item, profile } = await load((await params).id);
+  const t = translator(profileLocale(profile));
   const colors = parseList(item.colors);
   const styles = parseList(item.styles);
   const seasons = parseList(item.seasons);
-  const category = isCategory(item.category) ? CATEGORIES[item.category].one : item.category;
 
   // "Goes well with": pieces it has been paired with in outfits, most often first.
   const partners = new Map<string, { id: string; name: string; imagePath: string; count: number }>();
@@ -50,47 +52,51 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
   }
   const goesWith = [...partners.values()].sort((a, b) => b.count - a.count).slice(0, 4);
 
-  const all = await db.item.findMany({ where: { userId }, select: { id: true, wearCount: true, lastWornAt: true, createdAt: true } });
-  const note = wardrobeNotes(all).get(item.id);
+  const now = new Date();
+  const all = await db.item.findMany({
+    where: { profileId: profile.id },
+    select: { id: true, wearCount: true, lastWornAt: true, createdAt: true },
+  });
+  const note = wardrobeNotes(all, now, t).get(item.id);
+  const worn = wornLabel(item, now, t);
 
-  const facts = [
-    ["Type", item.subcategory],
-    ["Colour", colors.join(", ")],
-    ["Material", item.material],
-    ["Pattern", item.pattern],
-    ["Dress code", FORMALITY[item.formality]],
-    ["Brand", item.brand],
-  ].filter(([, value]) => value);
+  const facts: [string, string | null | undefined][] = [
+    [t("item.fact.type"), item.subcategory],
+    [t("item.fact.colour"), colors.join(", ")],
+    [t("item.fact.material"), item.material],
+    [t("item.fact.pattern"), item.pattern],
+    [t("item.fact.dressCode"), formalityLabel(t, item.formality)],
+    [t("item.fact.brand"), item.brand],
+  ];
 
   return (
     <>
-      <div className="relative -mx-4 -mt-5">
+      <div className="relative -mx-5 -mt-2 overflow-hidden rounded-b-[30px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- private listing image */}
-        <img src={imageUrl(item.imagePath)} alt={item.name} className="block aspect-[4/5] w-full bg-ground object-cover" />
+        <img src={imageUrl(item.imagePath)} alt={item.name} className="block aspect-[4/5] w-full bg-[#efe8db] object-cover" />
         <Link
           href="/"
-          aria-label="Back to wardrobe"
-          className="absolute top-3.5 left-3.5 grid size-10 place-items-center rounded-full bg-white/90 text-ink backdrop-blur-md"
+          aria-label={t("item.back")}
+          className="absolute top-3.5 left-3.5 grid size-10 place-items-center rounded-full bg-ground/90 text-ink backdrop-blur-md"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={20} strokeWidth={2.4} />
         </Link>
-        <span className={cx("absolute bottom-3.5 left-3.5", pill(item.wearCount === 0 ? "solid" : "frost", "md"))}>
-          {item.wearCount === 0 ? "New" : `${item.wearCount}× worn`}
+        <span className={cx("absolute bottom-3.5 left-3.5", pill(worn.never ? "solid" : "frost", "md"))}>
+          <Clock size={12} strokeWidth={2.6} /> {worn.text}
         </span>
+        {item.wearCount > 0 && (
+          <span className={cx("absolute right-3.5 bottom-3.5", pill("frost", "md"))}>{t.count("worn.count", item.wearCount)}</span>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {isCategory(item.category) && <span className={pill(CATEGORY_TONE[item.category], "md")}>{category}</span>}
-        {item.favourite && <span className={pill("pink", "md")}>♥ Favourite</span>}
+        {isCategory(item.category) && <span className={pill(CATEGORY_TONE[item.category], "md")}>{categoryLabel(t, item.category)}</span>}
+        {item.favourite && <span className={pill("pink", "md")}>{t("item.favourite")}</span>}
         {note && <span className={pill(note.tone, "md")}>{note.text}</span>}
       </div>
-      <h1 className="mt-2.5 text-[26px] leading-tight font-semibold tracking-tight">{item.name}</h1>
+      <h1 className="mt-2.5 text-[26px] leading-tight font-extrabold tracking-tight">{item.name}</h1>
 
-      {!item.aiTagged && (
-        <p className="mt-3 rounded-xl bg-[#fdeccb] p-3 text-sm text-[#8a5300]">
-          This piece hasn&rsquo;t been tagged. Fill in the details below so outfits can use it properly.
-        </p>
-      )}
+      {!item.aiTagged && <p className="mt-3 rounded-2xl bg-[#f6e6c6] p-3 text-sm font-semibold text-[#7d4b00]">{t("item.untagged")}</p>}
       {item.description && <p className="mt-2.5 text-[15px] leading-relaxed">{item.description}</p>}
 
       {(styles.length > 0 || seasons.length > 0) && (
@@ -102,40 +108,42 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
           ))}
           {seasons.map((s) => (
             <span key={s} className={cx(pill("grey", "md"), "capitalize")}>
-              {s}
+              {t(`season.${s}` as MessageKey)}
             </span>
           ))}
         </div>
       )}
 
       <Link href={`/outfits?anchor=${item.id}`} className={cx(button.primary, "mt-5 w-full")}>
-        <Sparkles size={17} /> Style this piece
+        <Sparkles size={17} /> {t("item.styleThis")}
       </Link>
 
-      {facts.length > 0 && (
-        <dl className="mt-5 rounded-2xl bg-ground px-4 py-1.5 text-sm">
-          {facts.map(([term, value]) => (
-            <div key={term} className="flex justify-between gap-4 border-b border-line py-2.5 last:border-0">
-              <dt className="text-muted">{term}</dt>
-              <dd className="flex items-center gap-2 text-right capitalize">
-                {term === "Colour" && item.colorHex && (
-                  <span className="inline-block size-2.5 rounded-full ring-1 ring-black/20" style={{ background: item.colorHex }} />
-                )}
-                {value}
-              </dd>
-            </div>
-          ))}
+      {facts.some(([, value]) => value) && (
+        <dl className={cx(panel, "mt-5 px-4 py-1.5 text-sm")}>
+          {facts
+            .filter(([, value]) => value)
+            .map(([term, value], n) => (
+              <div key={term} className="flex justify-between gap-4 border-b border-line py-2.5 last:border-0">
+                <dt className="font-semibold text-muted">{term}</dt>
+                <dd className="flex items-center gap-2 text-right font-semibold capitalize">
+                  {n === 1 && item.colorHex && (
+                    <span className="inline-block size-2.5 rounded-full ring-1 ring-black/20" style={{ background: item.colorHex }} />
+                  )}
+                  {value}
+                </dd>
+              </div>
+            ))}
         </dl>
       )}
 
       {goesWith.length > 0 && (
         <section className="mt-7">
-          <h2 className="mb-2.5 text-lg font-semibold">Goes well with</h2>
+          <h2 className="mb-2.5 text-lg font-extrabold">{t("item.goesWith")}</h2>
           <div className="grid grid-cols-4 gap-2">
             {goesWith.map((p) => (
               <Link key={p.id} href={`/item/${p.id}`} title={p.name}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- private listing image */}
-                <img src={imageUrl(p.imagePath)} alt={p.name} className="aspect-[4/5] w-full rounded-lg bg-ground object-cover" />
+                <img src={imageUrl(p.imagePath)} alt={p.name} className="aspect-[4/5] w-full rounded-xl bg-[#efe8db] object-cover" />
               </Link>
             ))}
           </div>
@@ -144,9 +152,9 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
 
       <ItemActions id={item.id} favourite={item.favourite} studio={imageAiEnabled()} />
 
-      <details className="group mt-5 rounded-2xl bg-ground" open={!item.aiTagged}>
-        <summary className="cursor-pointer list-none px-4 py-3.5 font-semibold">
-          Edit details <span className="font-normal text-muted group-open:hidden">· fix anything the AI got wrong</span>
+      <details className={cx("group mt-5", panel)} open={!item.aiTagged}>
+        <summary className="cursor-pointer list-none px-4 py-3.5 font-bold">
+          {t("item.edit")} <span className="font-semibold text-muted group-open:hidden">{t("item.editHint")}</span>
         </summary>
         <div className="border-t border-line px-4 py-4">
           <ItemEditor item={item} />

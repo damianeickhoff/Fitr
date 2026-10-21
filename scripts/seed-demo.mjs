@@ -56,9 +56,17 @@ if (old) {
 }
 
 const userId = randomUUID();
-db.prepare(
-  "INSERT INTO User (id, email, name, passwordHash, tokenVersion, styleNotes, createdAt) VALUES (?, ?, ?, ?, 0, ?, ?)",
-).run(userId, DEMO_EMAIL, "Demo", bcrypt.hashSync(DEMO_PASSWORD, 10), "Clean lines, mostly neutrals with one strong colour.", daysAgo(300));
+db.prepare("INSERT INTO User (id, email, name, passwordHash, tokenVersion, createdAt) VALUES (?, ?, ?, ?, 0, ?)").run(
+  userId, DEMO_EMAIL, "Demo", bcrypt.hashSync(DEMO_PASSWORD, 10), daysAgo(300),
+);
+// The wardrobe belongs to a profile under the account; a second, empty profile shows the switcher.
+const profileId = randomUUID();
+db.prepare("INSERT INTO Profile (id, userId, name, accent, locale, styleNotes, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+  profileId, userId, "Demo", "#7a2e2e", "en", "Clean lines, mostly neutrals with one strong colour.", daysAgo(300),
+);
+db.prepare("INSERT INTO Profile (id, userId, name, accent, locale, createdAt) VALUES (?, ?, ?, ?, ?, ?)").run(
+  randomUUID(), userId, "Lotte", "#a8244f", "nl", daysAgo(100),
+);
 
 await mkdir(path.join(uploads, userId), { recursive: true });
 async function store(file, kind) {
@@ -69,9 +77,9 @@ async function store(file, kind) {
 }
 
 const insert = db.prepare(`INSERT INTO Item
-  (id, userId, name, category, subcategory, colors, colorHex, pattern, material, styles, seasons, formality, description,
+  (id, userId, profileId, name, category, subcategory, colors, colorHex, pattern, material, styles, seasons, formality, description,
    photoPath, imagePath, cutoutPath, aiTagged, favourite, wearCount, lastWornAt, createdAt)
-  VALUES (?, ?, ?, ?, ?, ?, ?, 'solid', NULL, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`);
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'solid', NULL, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`);
 
 const ids = {};
 for (const [n, [key, name, category, sub, colors, hex, styles, seasons, formality, worn, lastWorn, fave, description]] of WARDROBE.entries()) {
@@ -79,7 +87,7 @@ for (const [n, [key, name, category, sub, colors, hex, styles, seasons, formalit
   const cutoutPath = await store(`${key}.png`, "cutout");
   ids[key] = randomUUID();
   insert.run(
-    ids[key], userId, name, category, sub, JSON.stringify(colors), hex, JSON.stringify(styles), JSON.stringify(seasons), formality,
+    ids[key], userId, profileId, name, category, sub, JSON.stringify(colors), hex, JSON.stringify(styles), JSON.stringify(seasons), formality,
     description, imagePath, imagePath, cutoutPath, fave ? 1 : 0, worn, lastWorn === null ? null : daysAgo(lastWorn),
     // The dress was bought recently; everything else has been around for a while.
     key === "dress" ? daysAgo(10) : daysAgo(250 - n),
@@ -89,9 +97,9 @@ for (const [n, [key, name, category, sub, colors, hex, styles, seasons, formalit
 // One saved look with styling advice, so the outfit screen has something to show.
 const outfitId = randomUUID();
 db.prepare(
-  "INSERT INTO Outfit (id, userId, name, occasion, reasoning, advice, saved, createdAt) VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
+  "INSERT INTO Outfit (id, userId, profileId, name, occasion, reasoning, advice, saved, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)",
 ).run(
-  outfitId, userId, "Off-duty edge", "Weekend",
+  outfitId, userId, profileId, "Off-duty edge", "Weekend",
   "A crisp white tee keeps the biker from feeling heavy, and mid-blue denim sits between the two. White trainers repeat the tee, so the look reads clean rather than tough.",
   JSON.stringify([
     { kind: "add", text: "Your tortoiseshell sunglasses warm up all that black leather. Push them up into your hair on cloudy days.", itemId: ids.sunglasses, shopFor: null },
@@ -104,8 +112,8 @@ const link = db.prepare("INSERT INTO OutfitItem (outfitId, itemId, position) VAL
 ["tee", "biker", "jeans", "trainers"].forEach((key, position) => link.run(outfitId, ids[key], position));
 
 // A full-length photo to try outfits on with.
-db.prepare("INSERT INTO SelfPhoto (id, userId, path, createdAt) VALUES (?, ?, ?, ?)").run(
-  randomUUID(), userId, await store("me.jpg", "self"), daysAgo(30),
+db.prepare("INSERT INTO SelfPhoto (id, userId, profileId, path, createdAt) VALUES (?, ?, ?, ?, ?)").run(
+  randomUUID(), userId, profileId, await store("me.jpg", "self"), daysAgo(30),
 );
 
 console.log(`Demo wardrobe ready: ${WARDROBE.length} pieces, 1 saved look and a photo to try it on. Sign in as ${DEMO_EMAIL}.`);
