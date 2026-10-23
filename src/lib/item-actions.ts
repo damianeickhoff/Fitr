@@ -15,7 +15,8 @@ import { profileLocale } from "./locale";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { studioPending } from "./studio";
 import { queueStudio, shootStudio, studioOnUpload, swapInStudio } from "./studio-queue";
-import { detectItems } from "./vision";
+import { suggestionValues, type DetailValues } from "./suggest";
+import { describeItem, detectItems } from "./vision";
 
 export type AddedItem = {
   id: string;
@@ -171,6 +172,8 @@ const editSchema = z.object({
   pattern: z.string().trim().max(60),
   formality: z.coerce.number().int().min(1).max(5),
   description: z.string().trim().max(600),
+  // Hidden in the form; only a re-check changes it. Absent keeps what is stored.
+  colorHex: z.union([z.literal(""), z.string().regex(/^#[0-9a-f]{6}$/i)]).optional(),
 });
 
 export type EditState = { error?: string; saved?: boolean } | undefined;
@@ -202,11 +205,36 @@ export async function updateItem(id: string, _: EditState, form: FormData): Prom
       formality: v.formality,
       description: v.description || null,
       seasons: JSON.stringify(seasons),
+      ...(v.colorHex !== undefined && { colorHex: v.colorHex || null }),
       aiTagged: true,
     },
   });
   revalidatePath("/", "layout");
   return { saved: true };
+}
+
+export type SuggestResult = { ok: true; suggestion: Partial<DetailValues> } | { ok: false; error: string };
+
+const MIME: Record<string, string> = { png: "image/png", webp: "image/webp" };
+
+/**
+ * Reads the piece's current listing again and answers with better details,
+ * without saving: the edit form shows them and the user decides.
+ */
+export async function suggestDetails(id: string): Promise<SuggestResult> {
+  const { profile } = await requireProfile();
+  const locale = profileLocale(profile);
+  const item = await ownItem(profile.id, id);
+  if (!aiEnabled()) return { ok: false, error: translator(locale)("err.recheckKey") };
+  try {
+    const data = await readStored(item.imagePath);
+    const ext = item.imagePath.split(".").pop()?.toLowerCase() ?? "";
+    const hints = item.aiTagged ? { name: item.name, category: item.category } : undefined;
+    const described = await describeItem({ data, mimeType: MIME[ext] ?? "image/jpeg" }, locale, hints);
+    return { ok: true, suggestion: suggestionValues(described) };
+  } catch (error) {
+    return { ok: false, error: describeAiError(error) };
+  }
 }
 
 export async function toggleFavourite(id: string) {

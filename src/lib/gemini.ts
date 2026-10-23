@@ -35,6 +35,7 @@ function ai() {
 export function describeAiError(error: unknown): string {
   if (error instanceof AiError) return error.message;
   if (error instanceof ApiError) {
+    if (error.status === 402) return "Gemini's prepaid credit is used up. Top it up in AI Studio to use AI features again.";
     if (error.status === 429) return "Gemini's free quota is used up for the moment. Wait a minute and try again.";
     if (error.status === 401 || error.status === 403 || (error.status === 400 && /api key/i.test(error.message))) {
       return "Gemini rejected the API key. Check GEMINI_API_KEY.";
