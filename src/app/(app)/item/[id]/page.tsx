@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ItemActions } from "@/components/item-actions";
-import { ItemEditor } from "@/components/item-editor";
+import { ItemDetails, RecheckControls } from "@/components/item-recheck";
 import { OriginalPhoto } from "@/components/original-photo";
 import { StudioPanel } from "@/components/studio-panel";
 import { StudioWatch } from "@/components/studio-watch";
 import { CATEGORY_TONE, button, cx, panel, pill, toneFor } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { aiEnabled } from "@/lib/gemini";
 import { isCategory, parseList } from "@/lib/garment";
 import { categoryLabel, formalityLabel, translator, type MessageKey } from "@/lib/i18n";
 import { imageAiEnabled } from "@/lib/image-gen";
@@ -64,6 +65,7 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
   const note = wardrobeNotes(all, now, t).get(item.id);
   const worn = wornLabel(item, now, t);
   const pending = studioPending(item, now);
+  const recheck = aiEnabled();
 
   const facts: [string, string | null | undefined][] = [
     [t("item.fact.type"), item.subcategory],
@@ -107,7 +109,13 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
       </div>
       <h1 className="mt-2.5 text-[26px] leading-tight font-extrabold tracking-tight">{item.name}</h1>
 
-      {!item.aiTagged && <p className="mt-3 rounded-2xl bg-[#f6e6c6] p-3 text-sm font-semibold text-[#7d4b00]">{t("item.untagged")}</p>}
+      <ItemDetails item={item}>
+      {!item.aiTagged && (
+        <div className="mt-3 rounded-2xl bg-[#f6e6c6] p-3 text-sm font-semibold text-[#7d4b00]">
+          <p>{t("item.untagged")}</p>
+          {recheck && <RecheckControls spot="notice" className="mt-2.5" />}
+        </div>
+      )}
       {item.description && <p className="mt-2.5 text-[15px] leading-relaxed">{item.description}</p>}
 
       {(styles.length > 0 || seasons.length > 0) && (
@@ -162,17 +170,10 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
       )}
 
       <ItemActions id={item.id} favourite={item.favourite} studio={imageAiEnabled() && !pending} />
+      {recheck && <RecheckControls spot="actions" className="mt-3" />}
       {!pending && <StudioPanel id={item.id} name={item.name} aiTagged={item.aiTagged} photoPath={item.photoPath} />}
       {pending && <StudioWatch />}
-
-      <details className={cx("group mt-5", panel)} open={!item.aiTagged}>
-        <summary className="cursor-pointer list-none px-4 py-3.5 font-bold">
-          {t("item.edit")} <span className="font-semibold text-muted group-open:hidden">{t("item.editHint")}</span>
-        </summary>
-        <div className="border-t border-line px-4 py-4">
-          <ItemEditor item={item} />
-        </div>
-      </details>
+      </ItemDetails>
     </>
   );
 }
