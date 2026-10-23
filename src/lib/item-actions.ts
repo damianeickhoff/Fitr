@@ -2,19 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireProfile } from "./auth";
 import { db } from "./db";
 import { CATEGORY_KEYS, SEASONS } from "./garment";
 import { aiEnabled, describeAiError } from "./gemini";
 import { translator } from "./i18n";
-import { describeImageError, generateImage, imageAiEnabled } from "./image-gen";
-import { makeListing, normalisePhoto, toJpeg, type Box } from "./images";
+import { describeImageError, imageAiEnabled } from "./image-gen";
+import { makeListing, normalisePhoto, type Box } from "./images";
 import { profileLocale } from "./locale";
-import { deleteStored, readStored, saveFile } from "./storage";
+import { deleteStored, saveFile } from "./storage";
+import { studioPending } from "./studio";
+import { queueStudio, shootStudio, studioOnUpload, swapInStudio } from "./studio-queue";
 import { detectItems } from "./vision";
 
-export type AddedItem = { id: string; name: string; imagePath: string; category: string; colors: string[] };
+export type AddedItem = {
+  id: string;
+  name: string;
+  imagePath: string;
+  category: string;
+  colors: string[];
+  /** A studio photo is on its way to replace this listing. */
+  studioPending: boolean;
+};
 
 export type AddPhotoResult =
   | { ok: true; items: AddedItem[]; warning?: string }
@@ -30,6 +41,23 @@ async function saveImages(userId: string, photo: { data: Buffer; width: number; 
 }
 
 const MAX_UPLOAD = 15 * 1024 * 1024;
+
+/**
+ * Queues studio photos for new pieces once the upload has answered, so the
+ * cut-out shows straight away and the studio photo replaces it when ready.
+ * A failure here must never cost the upload: the cut-out simply stays.
+ */
+async function studioAfterUpload(profileId: string, ids: string[]) {
+  if (!studioOnUpload()) return false;
+  try {
+    const { count, finished } = await queueStudio(profileId, ids);
+    after(() => finished);
+    return count > 0;
+  } catch (error) {
+    console.error("[studio] couldn't queue after upload:", error);
+    return false;
+  }
+}
 
 /**
  * One photo in, one or more wardrobe items out. Without Gemini (no key, quota
@@ -90,10 +118,12 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
           imagePath: item.imagePath,
           category: item.category,
           colors: d.colors.slice(0, 3),
+          studioPending: false,
         });
       }
+      const studio = await studioAfterUpload(profile.id, created.map((c) => c.id));
       revalidatePath("/", "layout");
-      return { ok: true, items: created };
+      return { ok: true, items: created.map((c) => ({ ...c, studioPending: studio })) };
     } catch (error) {
       warning = `${describeAiError(error)} ${t("err.untagged")}`;
     }
@@ -109,10 +139,11 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
       ...(await saveImages(user.id, photo)),
     },
   });
+  const studio = await studioAfterUpload(profile.id, [item.id]);
   revalidatePath("/", "layout");
   return {
     ok: true,
-    items: [{ id: item.id, name: item.name, imagePath: item.imagePath, category: item.category, colors: [] }],
+    items: [{ id: item.id, name: item.name, imagePath: item.imagePath, category: item.category, colors: [], studioPending: studio }],
     warning: warning ?? t("err.noAiTag"),
   };
 }
@@ -208,30 +239,72 @@ export async function deleteItem(id: string) {
  * every provider, so it is only offered when one is set up (see image-gen.ts).
  */
 export async function makeStudioPhoto(id: string): Promise<{ error?: string }> {
-  const { user, profile } = await requireProfile();
+  const { profile } = await requireProfile();
   const item = await ownItem(profile.id, id);
   if (!imageAiEnabled()) return { error: translator(profileLocale(profile))("err.studioKey") };
   try {
-    const source = await readStored(item.imagePath);
-    const result = await generateImage(
-      `Turn this into a clean e-commerce product photo of only the ${item.name}. ` +
-        "Show the piece alone, neatly presented as a ghost-mannequin or flat-lay shot, centred on a plain soft light-grey studio background with gentle shadow. " +
-        "Keep its exact colours, fabric, proportions, logos and details. Portrait 4:5 framing. No text, no people, no props.",
-      [{ data: source }],
-    );
-    // Cut out and framed like every other listing, whatever the model framed.
-    const { listing, cutout } = await makeListing(await toJpeg(result), 0, 0);
-    await db.item.update({
-      where: { id },
-      data: {
-        imagePath: await saveFile(user.id, listing, "studio"),
-        cutoutPath: cutout ? await saveFile(user.id, cutout, "cutout", "png") : item.cutoutPath,
-      },
-    });
-    await deleteStored(item.imagePath, cutout ? item.cutoutPath : null);
+    await shootStudio(item);
     revalidatePath("/", "layout");
     return {};
   } catch (error) {
     return { error: describeImageError(error) };
   }
+}
+
+/**
+ * The free route: the user had the ChatGPT app draw the studio photo on their
+ * own subscription and brings the picture back. It becomes the listing just as
+ * an API result does.
+ */
+export async function addStudioFromApp(id: string, form: FormData): Promise<{ error?: string }> {
+  const { profile } = await requireProfile();
+  const t = translator(profileLocale(profile));
+  const item = await ownItem(profile.id, id);
+  const file = form.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: t("err.chooseResult") };
+  if (file.size > MAX_UPLOAD) return { error: t("err.tooLarge") };
+
+  try {
+    const photo = await normalisePhoto(Buffer.from(await file.arrayBuffer()));
+    await swapInStudio(item, photo.data, photo.width, photo.height);
+  } catch {
+    return { error: t("err.notResult") };
+  }
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** Pieces of this profile still shown as a plain cut-out, oldest first. */
+async function withoutStudio(profileId: string) {
+  const items = await db.item.findMany({
+    where: { profileId, studioAt: null },
+    select: { id: true, studioRequestedAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const now = new Date();
+  return items.filter((i) => !studioPending(i, now)).map((i) => i.id);
+}
+
+/**
+ * Queues a studio photo for every piece that hasn't had one, one at a time in
+ * the background. The Me page asks first, since each picture costs a little.
+ */
+export async function reshootAll(): Promise<{ count?: number; error?: string }> {
+  const { profile } = await requireProfile();
+  if (!imageAiEnabled()) return { error: translator(profileLocale(profile))("err.studioKey") };
+  const { count, finished } = await queueStudio(profile.id, await withoutStudio(profile.id));
+  after(() => finished);
+  revalidatePath("/", "layout");
+  return { count };
+}
+
+/** What the Add page polls for while its new listings wait for their studio photo. */
+export async function studioStatus(ids: string[]): Promise<{ id: string; imagePath: string; pending: boolean }[]> {
+  const { profile } = await requireProfile();
+  const items = await db.item.findMany({
+    where: { id: { in: ids.slice(0, 50) }, profileId: profile.id },
+    select: { id: true, imagePath: true, studioRequestedAt: true },
+  });
+  const now = new Date();
+  return items.map((i) => ({ id: i.id, imagePath: i.imagePath, pending: studioPending(i, now) }));
 }

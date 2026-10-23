@@ -77,6 +77,26 @@ export function retryUpload(key: string) {
   send(key, upload.file);
 }
 
+/** Every new listing still waiting for its studio photo. */
+export function pendingStudioIds(list: Upload[]): string[] {
+  return list.flatMap((u) => (u.result?.ok ? u.result.items.filter((i) => i.studioPending).map((i) => i.id) : []));
+}
+
+/** Swaps in studio photos that have landed, so the listings on the Add page catch up. */
+export function applyStudioStatus(statuses: { id: string; imagePath: string; pending: boolean }[]) {
+  const byId = new Map(statuses.map((s) => [s.id, s]));
+  publish(
+    uploads.map((u) => {
+      if (!u.result?.ok || !u.result.items.some((i) => byId.has(i.id))) return u;
+      const items = u.result.items.map((i) => {
+        const s = byId.get(i.id);
+        return s ? { ...i, imagePath: s.imagePath, studioPending: s.pending } : i;
+      });
+      return { ...u, result: { ...u.result, items } };
+    }),
+  );
+}
+
 /** Drops finished and failed entries so the list only shows what's still relevant. */
 export function clearSettledUploads() {
   for (const u of uploads) if (u.status === "done" || u.status === "failed") URL.revokeObjectURL(u.preview);

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { imageModelLabel, imageProvider } from "@/lib/image-gen";
+import { APIError } from "openai";
+import { describeImageError, imageModelLabel, imageProvider } from "@/lib/image-gen";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -36,5 +37,16 @@ describe("imageProvider", () => {
   it("stays off when the chosen provider has no key", () => {
     env({ GEMINI_API_KEY: "g", GEMINI_IMAGE_MODEL: "m", IMAGE_PROVIDER: "openai" });
     expect(imageProvider()).toBeNull();
+  });
+});
+
+describe("describeImageError", () => {
+  const openai429 = (code: string, type: string) =>
+    APIError.generate(429, { error: { code, type, message: "429 from OpenAI" } }, undefined, new Headers());
+
+  it("tells an empty balance from a real rate limit", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(describeImageError(openai429("credit_balance_exhausted", "insufficient_quota"))).toMatch(/no credit left/);
+    expect(describeImageError(openai429("rate_limit_exceeded", "requests"))).toMatch(/rate-limiting/);
   });
 });

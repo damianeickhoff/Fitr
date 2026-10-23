@@ -1,6 +1,6 @@
 /**
- * Handing a try-on to the ChatGPT app, so it runs on the user's own ChatGPT
- * subscription instead of the paid API. Browser-only.
+ * Handing a try-on or a studio photo to the ChatGPT app, so it runs on the
+ * user's own ChatGPT subscription instead of the paid API. Browser-only.
  *
  * Phones get the share sheet with the photos and the prompt. Where the share
  * sheet can't carry files (desktop browsers, and any page served over plain
@@ -71,6 +71,12 @@ export async function prepareKit(personUrl: string, pieces: { name: string; url:
   return { files, collage };
 }
 
+/** A studio photo needs only the photo as taken: it is its own "collage". */
+export async function prepareSingle(url: string, name: string): Promise<HandoffKit> {
+  const blob = await (await fetch(url)).blob();
+  return { files: [new File([blob], `${slug(name) || "photo"}.jpg`, { type: "image/jpeg" })], collage: blob };
+}
+
 /** Clipboard that also works on plain http, where navigator.clipboard is missing. */
 function copyText(text: string) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -96,7 +102,7 @@ function fallbackCopy(text: string) {
  * Must run straight from the tap: share sheets and new tabs are only allowed
  * as a direct response to the user. Returns which route it took.
  */
-export function sendToChatGpt(kit: HandoffKit, prompt: string): "shared" | "fallback" {
+export function sendToChatGpt(kit: HandoffKit, prompt: string, downloadName = "fitr-try-on.jpg"): "shared" | "fallback" {
   copyText(prompt);
   if (navigator.canShare?.({ files: kit.files })) {
     navigator.share({ files: kit.files, text: prompt }).catch(() => undefined);
@@ -104,7 +110,7 @@ export function sendToChatGpt(kit: HandoffKit, prompt: string): "shared" | "fall
   }
   const link = document.createElement("a");
   link.href = URL.createObjectURL(kit.collage);
-  link.download = "fitr-try-on.jpg";
+  link.download = downloadName;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
   window.open("https://chatgpt.com/", "_blank", "noopener");
