@@ -45,7 +45,9 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
 - Model output referencing wardrobe ids is untrusted — filter ids against the
   user's real items before storing (see `cleanOutfits`).
 - Image generation (studio photos, try-on) is not on Gemini's free tier and is
-  gated on `GEMINI_IMAGE_MODEL` via `imageAiEnabled()`.
+  gated on `GEMINI_IMAGE_MODEL` via `imageAiEnabled()`. With both providers set up a
+  profile picks its own (`Profile.imageProvider`); pass `profile.imageProvider` to
+  `generateImage`/`imageProvider` so the choice holds everywhere.
 - Studio photos are the standard listing. With an image key, `addPhoto`
   answers with the cut-out first, then `after()` hands the new pieces to the
   in-memory queue in `src/lib/studio-queue.ts`, one picture at a time for the

@@ -144,6 +144,7 @@ export async function tryOn(outfitId: string, _: TryOnState, form: FormData): Pr
     const result = await generateImage(
       tryOnPrompt(outfit.items.map((oi) => oi.item.name)),
       [{ data: person }, ...pieces.map((data) => ({ data }))],
+      profile.imageProvider,
     );
     const resultPath = await saveFile(user.id, await toJpeg(result), "tryon");
     await db.tryOn.create({
@@ -153,7 +154,7 @@ export async function tryOn(outfitId: string, _: TryOnState, form: FormData): Pr
         outfitId,
         selfPhotoId: self.id,
         resultPath,
-        source: imageProvider() ?? "openai",
+        source: imageProvider(profile.imageProvider) ?? "openai",
       },
     });
     revalidatePath(`/outfits/${outfitId}`);

@@ -309,6 +309,8 @@ const en = {
   "me.aiStudio": "Studio photos and try-on",
   "me.aiCutout": "Cutting out photos",
   "me.aiCutoutDetail": "Runs on your server, free",
+  "me.imageProvider": "Images drawn by",
+  "me.imageProviderBody": "Studio photos and try-on. Each profile chooses its own.",
   "me.reshoot": "Re-shoot all as studio photos",
   "me.reshootBody.one": "{n} piece is still a plain cut-out. Each studio photo is a paid image from {label}, made one at a time in the background.",
   "me.reshootBody.other": "{n} pieces are still a plain cut-out. Each studio photo is a paid image from {label}, made one at a time in the background.",
@@ -396,6 +398,7 @@ const en = {
   "err.profileName": "Give the profile a name.",
   "err.lastProfile": "This is the only profile. Add another before deleting it.",
   "err.accent": "That colour is too light for white text. Pick a deeper one.",
+  "err.imageProvider": "That image model isn't set up on this server.",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -692,6 +695,8 @@ const nl: Record<MessageKey, string> = {
   "me.aiStudio": "Studiofoto's en passen",
   "me.aiCutout": "Foto's uitknippen",
   "me.aiCutoutDetail": "Draait op je eigen server, gratis",
+  "me.imageProvider": "Afbeeldingen gemaakt door",
+  "me.imageProviderBody": "Studiofoto's en passen. Elk profiel kiest zelf.",
   "me.reshoot": "Alles opnieuw als studiofoto",
   "me.reshootBody.one": "{n} stuk is nog een gewone uitsnede. Elke studiofoto is een betaalde afbeelding van {label}, één voor één op de achtergrond gemaakt.",
   "me.reshootBody.other": "{n} stukken zijn nog een gewone uitsnede. Elke studiofoto is een betaalde afbeelding van {label}, één voor één op de achtergrond gemaakt.",
@@ -779,6 +784,7 @@ const nl: Record<MessageKey, string> = {
   "err.profileName": "Geef het profiel een naam.",
   "err.lastProfile": "Dit is het enige profiel. Voeg eerst een ander toe voordat je dit verwijdert.",
   "err.accent": "Die kleur is te licht voor witte tekst. Kies een diepere.",
+  "err.imageProvider": "Dat beeldmodel is niet ingesteld op deze server.",
 };
 
 const MESSAGES: Record<Locale, Record<MessageKey, string>> = { en, nl };

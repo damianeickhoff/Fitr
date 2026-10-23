@@ -45,10 +45,10 @@ export async function swapInStudio(item: StudioSource, picture: Buffer, width = 
 }
 
 /** One paid image-model call: the current listing in, a product photo out. */
-export async function shootStudio(item: StudioSource) {
+export async function shootStudio(item: StudioSource, provider?: string | null) {
   const source = await readStored(item.imagePath);
   // An untagged piece is still called "New"; the prompt shouldn't say so.
-  const result = await generateImage(studioPrompt(item.aiTagged ? item.name : null), [{ data: source }]);
+  const result = await generateImage(studioPrompt(item.aiTagged ? item.name : null), [{ data: source }], provider);
   return swapInStudio(item, await toJpeg(result));
 }
 
@@ -88,7 +88,9 @@ async function runJob(profileId: string, id: string, progress: StudioProgress) {
     // A failure stops the rest of the batch: a 429 or an empty balance would
     // only repeat for every piece behind it.
     const item = progress.error || !imageAiEnabled() ? null : await db.item.findFirst({ where: { id, profileId } });
-    ok = item ? await shootStudio(item) : false;
+    // Read per job rather than once per batch, so a switch on the Me page takes effect mid-queue.
+    const profile = item ? await db.profile.findUnique({ where: { id: profileId }, select: { imageProvider: true } }) : null;
+    ok = item ? await shootStudio(item, profile?.imageProvider) : false;
   } catch (error) {
     progress.error ??= describeImageError(error);
   } finally {

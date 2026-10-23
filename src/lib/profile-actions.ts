@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { analyseWardrobe } from "./advice";
 import { rememberProfile, requireProfile } from "./auth";
 import { accentIsReadable } from "./colour";
+import { configuredImageProviders, isImageProvider } from "./image-gen";
 import { db } from "./db";
 import { aiEnabled, describeAiError } from "./gemini";
 import { isLocale, translator } from "./i18n";
@@ -122,6 +123,17 @@ export async function deleteProfile(): Promise<{ error?: string }> {
   if (next) await rememberProfile(next.id);
   revalidatePath("/", "layout");
   redirect("/me");
+}
+
+/** Which image model draws this profile's pictures; only a provider the server has a key for. */
+export async function saveImageProvider(provider: string): Promise<{ error?: string }> {
+  const { profile } = await requireProfile();
+  if (!isImageProvider(provider) || !configuredImageProviders().includes(provider)) {
+    return { error: translator(profileLocale(profile))("err.imageProvider") };
+  }
+  await db.profile.update({ where: { id: profile.id }, data: { imageProvider: provider } });
+  revalidatePath("/", "layout");
+  return {};
 }
 
 export type AppearanceState = { error?: string; saved?: boolean } | undefined;

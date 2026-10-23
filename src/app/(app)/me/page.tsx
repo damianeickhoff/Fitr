@@ -12,7 +12,8 @@ import { signOut } from "@/lib/auth-actions";
 import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
 import { LANGUAGE_NAMES, translator } from "@/lib/i18n";
-import { imageModelLabel } from "@/lib/image-gen";
+import { ImageProviderChoice } from "@/components/image-provider-choice";
+import { PROVIDER_NAME, configuredImageProviders, imageModelLabel, imageModelName, imageProvider } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
 import { studioPending } from "@/lib/studio";
 import { studioProgress } from "@/lib/studio-queue";
@@ -38,7 +39,9 @@ export default async function MePage() {
     db.item.findMany({ where: { profileId: profile.id, studioAt: null }, select: { studioRequestedAt: true } }),
   ]);
 
-  const imageLabel = imageModelLabel();
+  const imageLabel = imageModelLabel(profile.imageProvider);
+  const providers = configuredImageProviders();
+  const activeProvider = imageProvider(profile.imageProvider);
   const now = new Date();
   const waiting = plain.filter((i) => studioPending(i, now)).length;
   const batch = studioProgress(profile.id);
@@ -125,6 +128,12 @@ export default async function MePage() {
             </li>
           ))}
         </ul>
+        {providers.length > 1 && activeProvider && (
+          <ImageProviderChoice
+            options={providers.map((p) => ({ id: p, name: PROVIDER_NAME[p], model: imageModelName(p) }))}
+            current={activeProvider}
+          />
+        )}
         {imageLabel && <ReshootAll missing={plain.length - waiting} label={imageLabel} progress={progress} />}
         {waiting > 0 && <StudioWatch />}
       </section>

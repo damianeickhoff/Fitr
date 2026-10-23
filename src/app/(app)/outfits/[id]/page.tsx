@@ -44,7 +44,7 @@ const ADVICE: Record<AdviceKind, { label: MessageKey; tone: Tone; icon: typeof P
 export default async function OutfitPage({ params }: PageProps<"/outfits/[id]">) {
   const { outfit, selfPhotos, profile } = await load((await params).id);
   const t = translator(profileLocale(profile));
-  const provider = imageProvider();
+  const provider = imageProvider(profile.imageProvider);
   const apiLabel = provider ? SOURCE_LABEL[provider] : null;
   const advice = parseAdvice(outfit.advice);
   const inLook = new Set(outfit.items.map((i) => i.itemId));

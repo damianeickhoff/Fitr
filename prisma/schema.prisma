@@ -36,6 +36,9 @@ model Profile {
   accent     String   @default("#7a2e2e")
   /// "en" or "nl" (src/lib/i18n.ts).
   locale     String   @default("en")
+  /// "openai" or "gemini" when the server has both image models set up;
+  /// null means the instance default (src/lib/image-gen.ts).
+  imageProvider String?
   /// Free text about their taste ("mostly black, hates skinny jeans").
   /// Sent with every outfit and advice prompt.
   styleNotes String?

@@ -5,10 +5,17 @@ import { AiError, describeAiError, geminiImage, geminiImagesEnabled, type ImageI
 /**
  * Studio photos and try-on need an image model, and neither provider offers
  * one for free. FITR can use either: OpenAI's GPT Image (what ChatGPT draws
- * with) or Gemini's. IMAGE_PROVIDER picks one when both are configured;
- * otherwise whichever has a key wins, OpenAI first.
+ * with) or Gemini's. When both are configured a profile can pick its own on
+ * the Me page; failing that IMAGE_PROVIDER decides, and failing that
+ * whichever has a key wins, OpenAI first.
  */
 export type ImageProvider = "openai" | "gemini";
+
+export const PROVIDER_NAME: Record<ImageProvider, string> = { openai: "ChatGPT", gemini: "Gemini" };
+
+export function isImageProvider(value: unknown): value is ImageProvider {
+  return value === "openai" || value === "gemini";
+}
 
 const OPENAI_DEFAULT_MODEL = "gpt-image-2.5-sunburst";
 
@@ -16,7 +23,17 @@ function openaiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
-export function imageProvider(): ImageProvider | null {
+/** The providers the server has keys for, in the order the Me page offers them. */
+export function configuredImageProviders(): ImageProvider[] {
+  const list: ImageProvider[] = [];
+  if (openaiConfigured()) list.push("openai");
+  if (geminiImagesEnabled()) list.push("gemini");
+  return list;
+}
+
+/** `preferred` is the profile's choice; it only counts when that provider is set up. */
+export function imageProvider(preferred?: string | null): ImageProvider | null {
+  if (isImageProvider(preferred) && configuredImageProviders().includes(preferred)) return preferred;
   const wanted = process.env.IMAGE_PROVIDER?.toLowerCase();
   if (wanted === "openai") return openaiConfigured() ? "openai" : null;
   if (wanted === "gemini") return geminiImagesEnabled() ? "gemini" : null;
@@ -30,11 +47,13 @@ export function imageAiEnabled() {
 }
 
 /** Shown on the Me page, so the user can see what is drawing their images. */
-export function imageModelLabel() {
-  const provider = imageProvider();
-  if (provider === "openai") return `ChatGPT · ${process.env.OPENAI_IMAGE_MODEL || OPENAI_DEFAULT_MODEL}`;
-  if (provider === "gemini") return `Gemini · ${process.env.GEMINI_IMAGE_MODEL}`;
-  return null;
+export function imageModelLabel(preferred?: string | null) {
+  const provider = imageProvider(preferred);
+  return provider ? `${PROVIDER_NAME[provider]} · ${imageModelName(provider)}` : null;
+}
+
+export function imageModelName(provider: ImageProvider) {
+  return provider === "openai" ? process.env.OPENAI_IMAGE_MODEL || OPENAI_DEFAULT_MODEL : (process.env.GEMINI_IMAGE_MODEL ?? "");
 }
 
 let openai: OpenAI | null = null;
@@ -59,9 +78,9 @@ async function openaiImage(prompt: string, images: ImageInput[]): Promise<Buffer
   return Buffer.from(b64, "base64");
 }
 
-/** One image out, from a prompt and reference images, by whichever provider is set up. */
-export async function generateImage(prompt: string, images: ImageInput[]): Promise<Buffer> {
-  const provider = imageProvider();
+/** One image out, from a prompt and reference images, by the profile's provider or whichever is set up. */
+export async function generateImage(prompt: string, images: ImageInput[], preferred?: string | null): Promise<Buffer> {
+  const provider = imageProvider(preferred);
   if (provider === "openai") return openaiImage(prompt, images);
   if (provider === "gemini") return geminiImage(prompt, images);
   throw new AiError("Add an OPENAI_API_KEY (or GEMINI_IMAGE_MODEL) to generate images.");

@@ -243,7 +243,7 @@ export async function makeStudioPhoto(id: string): Promise<{ error?: string }> {
   const item = await ownItem(profile.id, id);
   if (!imageAiEnabled()) return { error: translator(profileLocale(profile))("err.studioKey") };
   try {
-    await shootStudio(item);
+    await shootStudio(item, profile.imageProvider);
     revalidatePath("/", "layout");
     return {};
   } catch (error) {
