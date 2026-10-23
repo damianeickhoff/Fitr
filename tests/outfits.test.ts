@@ -25,6 +25,8 @@ function item(category: string, colors: string[], extra: Partial<Item> = {}): It
     imagePath: "i.jpg",
     cutoutPath: null,
     lastWornAt: null,
+    studioAt: null,
+    studioRequestedAt: null,
     aiTagged: true,
     favourite: false,
     wearCount: 0,

@@ -1,4 +1,4 @@
-import { Clock, Heart } from "lucide-react";
+import { Clock, Heart, Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { WardrobeNote } from "@/lib/wardrobe";
 import { imageUrl } from "@/lib/storage-url";
@@ -21,6 +21,8 @@ export type CardItem = {
   count: string;
   /** Position in most-recently-worn order, for the list view. */
   wornRank: number;
+  /** "Studio photo coming", while the background step re-shoots it. */
+  studioPending: string | null;
 };
 
 /**
@@ -60,6 +62,11 @@ export function ItemCard({
       <span className={cx("mt-2.5 block px-1.5 text-[14px] leading-snug font-bold group-hover:text-accent", faded ? "text-muted" : "text-ink")}>
         {item.name}
       </span>
+      {item.studioPending && (
+        <span className={cx("mt-1.5 ml-1.5", pill("violet"))}>
+          <Loader2 size={11} strokeWidth={2.6} className="animate-spin" /> {item.studioPending}
+        </span>
+      )}
       {note && <span className={cx("mt-1.5 ml-1.5", pill(note.tone))}>{note.text}</span>}
     </Link>
   );
@@ -82,6 +89,7 @@ export function ItemRow({ item, faded, needsDetails }: { item: CardItem; faded?:
         <span className={cx("block truncate text-[14.5px] font-bold", faded ? "text-muted" : "text-ink")}>{item.name}</span>
         <span className="mt-1.5 flex flex-wrap gap-1.5">
           <span className={pill("grey")}>{item.categoryLabel}</span>
+          {item.studioPending && <span className={pill("violet")}>{item.studioPending}</span>}
           {note && <span className={pill(note.tone)}>{note.text}</span>}
         </span>
       </span>

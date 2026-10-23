@@ -2,11 +2,19 @@
 
 import { Camera, ImagePlus, Loader2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { isCategory } from "@/lib/garment";
 import { categoryLabel } from "@/lib/i18n";
+import { studioStatus } from "@/lib/item-actions";
 import { imageUrl } from "@/lib/storage-url";
-import { clearSettledUploads, enqueueUploads, retryUpload, useUploads } from "@/lib/upload-queue";
+import {
+  applyStudioStatus,
+  clearSettledUploads,
+  enqueueUploads,
+  pendingStudioIds,
+  retryUpload,
+  useUploads,
+} from "@/lib/upload-queue";
 import { useT } from "./locale";
 import { CATEGORY_TONE, button, cx, panel, pill, toneFor } from "./ui";
 
@@ -17,6 +25,15 @@ export function AddPhotos() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
   const enqueue = (files: FileList | null) => enqueueUploads(files, t("add.failed"));
+  // Studio photos land in the background after the upload; check in on them.
+  const waiting = pendingStudioIds(uploads).join(",");
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => {
+      studioStatus(waiting.split(",")).then(applyStudioStatus, () => undefined);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [waiting]);
 
   return (
     <div className="mt-5">
@@ -95,6 +112,11 @@ export function AddPhotos() {
                         <span className="min-w-0 flex-1 py-1">
                           <span className="block text-[16px] leading-snug font-bold">{item.name}</span>
                           <span className="mt-2 flex flex-wrap gap-1.5">
+                            {item.studioPending && (
+                              <span className={pill("violet")}>
+                                <Loader2 size={11} strokeWidth={2.6} className="animate-spin" /> {t("studio.pending")}
+                              </span>
+                            )}
                             {isCategory(item.category) && (
                               <span className={pill(CATEGORY_TONE[item.category])}>{categoryLabel(t, item.category)}</span>
                             )}

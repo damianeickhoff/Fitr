@@ -69,12 +69,25 @@ export async function generateImage(prompt: string, images: ImageInput[]): Promi
 
 /** A message fit to show the user, for any error either provider can throw. */
 export function describeImageError(error: unknown): string {
+  // The sentence below is a guess from the status; the provider's own words
+  // are what tell a real rate limit from a billing or tier problem.
+  if (error instanceof APIError) {
+    console.error("[image]", { status: error.status, code: error.code, type: error.type, message: error.message, requestId: error.requestID });
+  } else {
+    console.error("[image]", error);
+  }
   if (error instanceof APIError) {
     if (error.status === 401) return "OpenAI rejected the API key. Check OPENAI_API_KEY.";
-    if (error.code === "insufficient_quota" || error.code === "billing_hard_limit_reached") {
+    // An empty balance arrives as a 429 too, told apart only by code or type.
+    if (
+      error.type === "insufficient_quota" ||
+      ["insufficient_quota", "billing_hard_limit_reached", "credit_balance_exhausted"].includes(error.code ?? "")
+    ) {
       return "Your OpenAI account has no credit left. Add some at platform.openai.com → Billing.";
     }
-    if (error.status === 429) return "OpenAI is rate-limiting requests. Wait a minute and try again.";
+    if (error.status === 429) {
+      return "OpenAI is rate-limiting requests. If waiting a minute doesn't help, the account may have no prepaid credit yet or be below the usage tier this image model needs: OpenAI answers those with the same error. Check platform.openai.com → Billing and → Limits.";
+    }
     if (error.status === 403) {
       return "OpenAI needs your organisation verified before it allows image models. Do that at platform.openai.com → Settings → Organization.";
     }

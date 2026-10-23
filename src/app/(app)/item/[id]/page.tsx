@@ -1,9 +1,12 @@
-import { ArrowLeft, Clock, Sparkles } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ItemActions } from "@/components/item-actions";
 import { ItemEditor } from "@/components/item-editor";
+import { OriginalPhoto } from "@/components/original-photo";
+import { StudioPanel } from "@/components/studio-panel";
+import { StudioWatch } from "@/components/studio-watch";
 import { CATEGORY_TONE, button, cx, panel, pill, toneFor } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -12,6 +15,7 @@ import { categoryLabel, formalityLabel, translator, type MessageKey } from "@/li
 import { imageAiEnabled } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
+import { studioPending } from "@/lib/studio";
 import { wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 async function load(id: string) {
@@ -59,6 +63,7 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
   });
   const note = wardrobeNotes(all, now, t).get(item.id);
   const worn = wornLabel(item, now, t);
+  const pending = studioPending(item, now);
 
   const facts: [string, string | null | undefined][] = [
     [t("item.fact.type"), item.subcategory],
@@ -81,6 +86,7 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
         >
           <ArrowLeft size={20} strokeWidth={2.4} />
         </Link>
+        <OriginalPhoto path={item.photoPath} className="absolute top-3.5 right-3.5" />
         <span className={cx("absolute bottom-3.5 left-3.5", pill(worn.never ? "solid" : "frost", "md"))}>
           <Clock size={12} strokeWidth={2.6} /> {worn.text}
         </span>
@@ -91,6 +97,11 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         {isCategory(item.category) && <span className={pill(CATEGORY_TONE[item.category], "md")}>{categoryLabel(t, item.category)}</span>}
+        {pending && (
+          <span className={pill("violet", "md")}>
+            <Loader2 size={12} strokeWidth={2.6} className="animate-spin" /> {t("studio.pending")}
+          </span>
+        )}
         {item.favourite && <span className={pill("pink", "md")}>{t("item.favourite")}</span>}
         {note && <span className={pill(note.tone, "md")}>{note.text}</span>}
       </div>
@@ -150,7 +161,9 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
         </section>
       )}
 
-      <ItemActions id={item.id} favourite={item.favourite} studio={imageAiEnabled()} />
+      <ItemActions id={item.id} favourite={item.favourite} studio={imageAiEnabled() && !pending} />
+      {!pending && <StudioPanel id={item.id} name={item.name} aiTagged={item.aiTagged} photoPath={item.photoPath} />}
+      {pending && <StudioWatch />}
 
       <details className={cx("group mt-5", panel)} open={!item.aiTagged}>
         <summary className="cursor-pointer list-none px-4 py-3.5 font-bold">

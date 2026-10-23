@@ -21,7 +21,7 @@ describe("translator", () => {
     // Every key exists in both (the type checks that); this checks the {vars} match.
     const en = translator("en");
     const nl = translator("nl");
-    const keys = ["wardrobe.hi", "worn.added", "tryon.paid", "appearance.contrastOk", "me.summary", "outfit.shop", "add.aiOff"] as const;
+    const keys = ["wardrobe.hi", "worn.added", "tryon.paid", "appearance.contrastOk", "me.summary", "outfit.shop", "add.aiOff", "me.reshootBody.other", "me.reshootStopped"] as const;
     for (const key of keys) {
       const vars = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
       expect(vars(nl(key))).toEqual(vars(en(key)));

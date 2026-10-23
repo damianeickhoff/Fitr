@@ -46,6 +46,15 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   user's real items before storing (see `cleanOutfits`).
 - Image generation (studio photos, try-on) is not on Gemini's free tier and is
   gated on `GEMINI_IMAGE_MODEL` via `imageAiEnabled()`.
+- Studio photos are the standard listing. With an image key, `addPhoto`
+  answers with the cut-out first, then `after()` hands the new pieces to the
+  in-memory queue in `src/lib/studio-queue.ts`, one picture at a time for the
+  whole server; `STUDIO_ON_UPLOAD=off` turns that off. `studioRequestedAt`
+  marks a piece as waiting (trusted for 90 minutes, as a restart drops the
+  queue) and `studioAt` records that it has one. A failure keeps the
+  cut-out, clears the marker and stops the rest of the batch. With or without
+  a key the item page offers the free hand-off to the ChatGPT app; every route
+  shares `studioPrompt` (`src/lib/studio.ts`) and `swapInStudio`.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that

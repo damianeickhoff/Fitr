@@ -89,6 +89,13 @@ model Item {
   /// False when Gemini was unavailable and the fields above are placeholders
   /// the user should check.
   aiTagged    Boolean  @default(false)
+  /// When an image model last re-shot the listing as a studio photo, through
+  /// the API or the ChatGPT app. Null for a plain cut-out.
+  studioAt    DateTime?
+  /// Set while a background studio photo is queued for this piece, cleared
+  /// when it lands or fails. Only trusted while recent: a server restart
+  /// drops the queue but not the marker (see `studioPending` in studio.ts).
+  studioRequestedAt DateTime?
   favourite   Boolean  @default(false)
   wearCount   Int      @default(0)
   /// Drives the "not worn since" notes and the faded look of neglected pieces.

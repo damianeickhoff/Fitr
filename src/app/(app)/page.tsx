@@ -1,6 +1,7 @@
 import { ArrowRight, Camera, ChevronRight, Clock } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { StudioWatch } from "@/components/studio-watch";
 import { WardrobeGrid, type View } from "@/components/wardrobe-grid";
 import { button, cx, pill } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
@@ -8,6 +9,7 @@ import { db } from "@/lib/db";
 import { categoryLabel, translator } from "@/lib/i18n";
 import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
+import { studioPending } from "@/lib/studio";
 import { FADE_COOKIE, VIEW_COOKIE, addedLabel, byLastWorn, isIdle, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 export default async function WardrobePage() {
@@ -52,6 +54,7 @@ export default async function WardrobePage() {
     worn: wornLabel(i, now, t),
     count: i.wearCount === 0 ? addedLabel(i, now, t) : t.count("worn.count", i.wearCount),
     wornRank: rank.get(i.id) ?? 0,
+    studioPending: studioPending(i, now) ? t("studio.pending") : null,
   }));
   const unworn = items.filter((i) => i.wearCount === 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const view: View = jar.get(VIEW_COOKIE)?.value === "list" ? "list" : "grid";
@@ -87,13 +90,16 @@ export default async function WardrobePage() {
     ) : null;
 
   return (
-    <WardrobeGrid
-      name={profile.name}
-      items={cards}
-      unworn={unworn.length}
-      initialFade={jar.get(FADE_COOKIE)?.value !== "off"}
-      initialView={view}
-      banner={banner}
-    />
+    <>
+      <WardrobeGrid
+        name={profile.name}
+        items={cards}
+        unworn={unworn.length}
+        initialFade={jar.get(FADE_COOKIE)?.value !== "off"}
+        initialView={view}
+        banner={banner}
+      />
+      {cards.some((c) => c.studioPending) && <StudioWatch />}
+    </>
   );
 }

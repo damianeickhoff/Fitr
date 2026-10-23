@@ -2,7 +2,9 @@ import { ChevronRight, Globe, LogOut } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DeleteProfile, ProfileSwitcher } from "@/components/profile-switcher";
+import { ReshootAll } from "@/components/reshoot-all";
 import { SelfPhotos } from "@/components/self-photos";
+import { StudioWatch } from "@/components/studio-watch";
 import { StyleNotes } from "@/components/style-notes";
 import { button, cx, panel, pill } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
@@ -12,6 +14,8 @@ import { aiEnabled } from "@/lib/gemini";
 import { LANGUAGE_NAMES, translator } from "@/lib/i18n";
 import { imageModelLabel } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
+import { studioPending } from "@/lib/studio";
+import { studioProgress } from "@/lib/studio-queue";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { profile } = await requireProfile();
@@ -22,7 +26,7 @@ export default async function MePage() {
   const { user, profile } = await requireProfile();
   const locale = profileLocale(profile);
   const t = translator(locale);
-  const [photos, profiles, pieces, outfits] = await Promise.all([
+  const [photos, profiles, pieces, outfits, plain] = await Promise.all([
     db.selfPhoto.findMany({ where: { profileId: profile.id }, orderBy: { createdAt: "desc" } }),
     db.profile.findMany({
       where: { userId: user.id },
@@ -31,7 +35,14 @@ export default async function MePage() {
     }),
     db.item.count({ where: { profileId: profile.id } }),
     db.outfit.count({ where: { profileId: profile.id, saved: true } }),
+    db.item.findMany({ where: { profileId: profile.id, studioAt: null }, select: { studioRequestedAt: true } }),
   ]);
+
+  const imageLabel = imageModelLabel();
+  const now = new Date();
+  const waiting = plain.filter((i) => studioPending(i, now)).length;
+  const batch = studioProgress(profile.id);
+  const progress = batch && { done: batch.done, total: batch.total, error: batch.error, running: waiting > 0 };
 
   const status = [
     {
@@ -41,8 +52,8 @@ export default async function MePage() {
     },
     {
       name: t("me.aiStudio"),
-      on: imageModelLabel() !== null,
-      detail: imageModelLabel() ?? t("me.addKey", { key: "OPENAI_API_KEY" }),
+      on: imageLabel !== null,
+      detail: imageLabel ?? t("me.addKey", { key: "OPENAI_API_KEY" }),
     },
     { name: t("me.aiCutout"), on: true, detail: t("me.aiCutoutDetail") },
   ];
@@ -114,6 +125,8 @@ export default async function MePage() {
             </li>
           ))}
         </ul>
+        {imageLabel && <ReshootAll missing={plain.length - waiting} label={imageLabel} progress={progress} />}
+        {waiting > 0 && <StudioWatch />}
       </section>
 
       <div className="mt-7 flex flex-wrap items-start gap-3">
