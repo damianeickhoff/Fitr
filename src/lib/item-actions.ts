@@ -8,11 +8,11 @@ import { requireProfile } from "./auth";
 import { db } from "./db";
 import { CATEGORY_KEYS, SEASONS } from "./garment";
 import { aiEnabled, describeAiError } from "./gemini";
-import { translator } from "./i18n";
+import { translator, type Locale } from "./i18n";
 import { describeImageError, imageAiEnabled } from "./image-gen";
 import { makeListing, normalisePhoto, type Box } from "./images";
 import { profileLocale } from "./locale";
-import { deleteStored, saveFile } from "./storage";
+import { deleteStored, readStored, saveFile } from "./storage";
 import { studioPending } from "./studio";
 import { queueStudio, shootStudio, studioOnUpload, swapInStudio } from "./studio-queue";
 import { detectItems } from "./vision";
@@ -232,6 +232,46 @@ export async function deleteItem(id: string) {
   await deleteStored(item.imagePath, item.cutoutPath, sharing === 0 ? item.photoPath : null);
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+/** Gemini's box for the piece in a photo: the detected item of its category, else the largest. */
+async function findBox(photo: Buffer, category: string, locale: Locale): Promise<Box | undefined> {
+  if (!aiEnabled()) return undefined;
+  try {
+    const detected = await detectItems(photo, locale);
+    const area = (d: { box: number[] }) => (d.box[2] - d.box[0]) * (d.box[3] - d.box[1]);
+    const pick = detected.find((d) => d.category === category) ?? [...detected].sort((p, q) => area(q) - area(p))[0];
+    return pick?.box as Box | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Cuts the piece out of its original photo again, for when the first cut
+ * missed a lining or kept a hanger. Local and free. A studio photo is given
+ * up, since the listing goes back to the photo as taken; re-shoot afterwards.
+ */
+export async function recutItem(id: string): Promise<{ error?: string }> {
+  const { user, profile } = await requireProfile();
+  const item = await ownItem(profile.id, id);
+  const t = translator(profileLocale(profile));
+  try {
+    const photo = await normalisePhoto(await readStored(item.photoPath));
+    // The upload cropped to Gemini's box, which is what kept the hanger out;
+    // ask again when a key is there, and fall back to the whole photo quietly.
+    const box = await findBox(photo.data, item.category, profileLocale(profile));
+    const { listing, cutout } = await makeListing(photo.data, photo.width, photo.height, box);
+    const imagePath = await saveFile(user.id, listing, "item");
+    const cutoutPath = cutout ? await saveFile(user.id, cutout, "cutout", "png") : null;
+    await db.item.update({ where: { id }, data: { imagePath, cutoutPath, studioAt: null, studioRequestedAt: null } });
+    // The original photo is never deleted; a listing that is that same file is kept too.
+    await deleteStored(item.imagePath === item.photoPath ? null : item.imagePath, item.cutoutPath);
+  } catch {
+    return { error: t("err.notPhoto") };
+  }
+  revalidatePath("/", "layout");
+  return {};
 }
 
 /**

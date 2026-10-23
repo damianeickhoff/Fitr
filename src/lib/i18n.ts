@@ -149,6 +149,9 @@ const en = {
   "actions.studio": "Studio photo",
   "actions.studioWorking": "Re-shooting as a studio photo…",
   "actions.studioReady": "Studio photo ready.",
+  "actions.recut": "Re-cut from photo",
+  "actions.recutWorking": "Cutting it out again…",
+  "actions.recutReady": "Cut out again from the original photo.",
   "actions.remove": "Remove",
   "actions.removeConfirm": "Remove this piece from your wardrobe? Outfits that use it lose it too.",
 
@@ -535,6 +538,9 @@ const nl: Record<MessageKey, string> = {
   "actions.studio": "Studiofoto",
   "actions.studioWorking": "Opnieuw schieten als studiofoto…",
   "actions.studioReady": "Studiofoto klaar.",
+  "actions.recut": "Opnieuw uitknippen",
+  "actions.recutWorking": "Opnieuw uitknippen…",
+  "actions.recutReady": "Opnieuw uitgeknipt uit de originele foto.",
   "actions.remove": "Verwijderen",
   "actions.removeConfirm": "Dit stuk uit je garderobe verwijderen? Outfits die het gebruiken raken het ook kwijt.",
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { Heart, Shirt, Trash2, Wand2 } from "lucide-react";
+import { Heart, Scissors, Shirt, Trash2, Wand2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import { deleteItem, makeStudioPhoto, markWorn, toggleFavourite } from "@/lib/item-actions";
+import { deleteItem, makeStudioPhoto, markWorn, recutItem, toggleFavourite } from "@/lib/item-actions";
 import { useT } from "./locale";
 import { button, cx } from "./ui";
 
@@ -47,6 +47,20 @@ export function ItemActions({ id, favourite, studio }: { id: string; favourite: 
             <Wand2 size={16} /> {t("actions.studio")}
           </button>
         )}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              setMessage(t("actions.recutWorking"));
+              const result = await recutItem(id);
+              setMessage(result.error ?? t("actions.recutReady"));
+            })
+          }
+          className={button.secondary}
+        >
+          <Scissors size={16} /> {t("actions.recut")}
+        </button>
         <button
           type="button"
           disabled={pending}

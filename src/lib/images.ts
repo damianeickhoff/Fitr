@@ -1,6 +1,7 @@
 import "server-only";
 import sharp from "sharp";
 import { removeBackground } from "./cutout";
+import { restoreInterior } from "./interior";
 import { LISTING_HEIGHT, LISTING_WIDTH, framedCutout } from "./framing";
 
 export { LISTING_HEIGHT, LISTING_WIDTH, framedCutout } from "./framing";
@@ -62,7 +63,8 @@ export async function blurredListing(crop: Buffer) {
 export async function makeListing(photo: Buffer, width: number, height: number, box?: Box | null) {
   const crop = await cropToBox(photo, width, height, box);
   try {
-    const removed = await removeBackground(crop);
+    // The remover tends to cut a lining out as if it were wall; see interior.ts.
+    const removed = await restoreInterior(await removeBackground(crop), crop);
     const cutout = await sharp(removed)
       .trim({ threshold: 10 })
       .resize(900, 900, { fit: "inside", withoutEnlargement: true })
