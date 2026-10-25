@@ -113,6 +113,32 @@ export function sendToChatGpt(kit: HandoffKit, prompt: string, downloadName = "f
   link.download = downloadName;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
-  window.open("https://chatgpt.com/", "_blank", "noopener");
+  openChatGpt();
   return "fallback";
+}
+
+/**
+ * Opens the ChatGPT app where one can be reached, the website otherwise. The
+ * share sheet above is the better route, since it carries the photos, but a
+ * page served over plain http has no share sheet, and the app is still the
+ * place people want to land. Android takes an intent URL that falls back to
+ * the site by itself; iOS takes the app's URL scheme, with the site opened
+ * only if the page is still in front a moment later (an app that opened
+ * would have sent it to the background).
+ */
+function openChatGpt() {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) {
+    window.location.href = "intent://chat#Intent;scheme=chatgpt;package=com.openai.chatgpt;S.browser_fallback_url=https%3A%2F%2Fchatgpt.com%2F;end";
+    return;
+  }
+  if (/iphone|ipad|ipod/i.test(ua)) {
+    const started = Date.now();
+    window.location.href = "chatgpt://";
+    setTimeout(() => {
+      if (document.visibilityState === "visible" && Date.now() - started < 2500) window.open("https://chatgpt.com/", "_blank", "noopener");
+    }, 1500);
+    return;
+  }
+  window.open("https://chatgpt.com/", "_blank", "noopener");
 }

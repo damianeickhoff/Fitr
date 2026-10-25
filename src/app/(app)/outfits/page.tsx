@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
 import { translator } from "@/lib/i18n";
 import { profileLocale } from "@/lib/locale";
+import { imageUrl } from "@/lib/storage-url";
 import { profileForecasts } from "@/lib/weather";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +26,10 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
     db.outfit.findMany({
       where: { profileId: profile.id },
       orderBy: { createdAt: "desc" },
-      include: { items: { include: { item: true }, orderBy: { position: "asc" } } },
+      include: {
+        items: { include: { item: true }, orderBy: { position: "asc" } },
+        tryOns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultPath: true } },
+      },
     }),
     typeof anchor === "string"
       ? db.item.findFirst({ where: { id: anchor, profileId: profile.id }, select: { id: true, name: true, imagePath: true } })
@@ -40,7 +44,12 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
     <div className="grid grid-cols-2 gap-3">
       {list.map((outfit) => (
         <Link key={outfit.id} href={`/outfits/${outfit.id}`} className={cx("group block", card)}>
-          <FlatLay pieces={outfit.items.map(({ item }) => toPiece(item))} className="rounded-[20px]" />
+          {outfit.tryOns[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element -- private try-on render
+            <img src={imageUrl(outfit.tryOns[0].resultPath)} alt="" className="aspect-[4/5] w-full rounded-[20px] bg-[#efe8db] object-cover" />
+          ) : (
+            <FlatLay pieces={outfit.items.map(({ item }) => toPiece(item))} className="rounded-[20px]" />
+          )}
           <p className="mt-2.5 flex items-center gap-1.5 px-1.5 text-[15px] font-bold group-hover:text-accent">
             {outfit.saved && <Bookmark size={14} className="fill-current" />}
             {outfit.name}

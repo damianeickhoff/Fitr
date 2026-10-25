@@ -1,15 +1,16 @@
 "use client";
 
-import { ImagePlus, Send, Trash2 } from "lucide-react";
+import { ImagePlus, Send } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { prepareKit, sendToChatGpt, type HandoffKit } from "@/lib/chatgpt-handoff";
 import { shrinkImage } from "@/lib/client-image";
-import { addTryOnFromApp, deleteTryOn, tryOn } from "@/lib/outfit-actions";
+import { addTryOnFromApp, tryOn } from "@/lib/outfit-actions";
 import { imageUrl } from "@/lib/storage-url";
-import { SOURCE_LABEL, tryOnPrompt, type TryOnSource } from "@/lib/try-on";
+import { tryOnPrompt } from "@/lib/try-on";
 import { useT } from "./locale";
 import { SubmitButton } from "./submit-button";
+import { TryOnGallery } from "./try-on-gallery";
 import { button, cx, panel, pill } from "./ui";
 
 type Photo = { id: string; path: string };
@@ -33,7 +34,6 @@ export function TryOnPanel({
   const t = useT();
   const [state, action] = useActionState(tryOn.bind(null, outfitId), undefined);
   const [chosen, setChosen] = useState(selfPhotos[0]?.id ?? "");
-  const [pending, start] = useTransition();
   const chosenPhoto = selfPhotos.find((p) => p.id === chosen);
   const [keyBefore, keyAfter] = t("tryon.needKey").split("{key}");
 
@@ -118,28 +118,7 @@ export function TryOnPanel({
         </>
       )}
 
-      {results.length > 0 && (
-        <div className="mt-4 grid grid-cols-2 gap-2.5">
-          {results.map((r) => (
-            <figure key={r.id} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element -- private try-on render */}
-              <img src={imageUrl(r.path)} alt={t("tryon.result")} className="w-full rounded-2xl object-cover" />
-              <span className={cx("absolute bottom-2 left-2", pill(r.source === "chatgpt-app" ? "green" : "violet"))}>
-                {SOURCE_LABEL[r.source as TryOnSource] ?? t("tryon.label")}
-              </span>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => start(() => deleteTryOn(r.id))}
-                className={cx(button.secondary, "absolute top-2 right-2 size-9 p-0")}
-                aria-label={t("tryon.delete")}
-              >
-                <Trash2 size={15} />
-              </button>
-            </figure>
-          ))}
-        </div>
-      )}
+      {results.length > 0 && <TryOnGallery results={results} />}
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToLook } from "@/components/add-to-look";
 import { FlatLay, toPiece } from "@/components/flat-lay";
 import { OutfitActions } from "@/components/outfit-actions";
+import { TryOnGallery } from "@/components/try-on-gallery";
 import { TryOnPanel } from "@/components/try-on-panel";
 import { button, cx, panel, pill, type Tone } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
@@ -63,12 +64,25 @@ export default async function OutfitPage({ params }: PageProps<"/outfits/[id]">)
         <ArrowLeft size={16} strokeWidth={2.6} /> {t("outfit.back")}
       </Link>
 
-      <FlatLay
-        showLabels
-        suggestedLabel={t("common.suggested")}
-        className="rounded-[26px]"
-        pieces={[...outfit.items.map(({ item }) => toPiece(item)), ...suggested.map((item) => toPiece(item, true))]}
-      />
+      {/* A try-on is the outfit on its owner: once there is one, it is the picture; the flat lay keeps the suggestions. */}
+      {outfit.tryOns[0] ? (
+        <TryOnGallery hero results={[{ id: outfit.tryOns[0].id, path: outfit.tryOns[0].resultPath, source: outfit.tryOns[0].source }]} />
+      ) : (
+        <FlatLay
+          showLabels
+          suggestedLabel={t("common.suggested")}
+          className="rounded-[26px]"
+          pieces={[...outfit.items.map(({ item }) => toPiece(item)), ...suggested.map((item) => toPiece(item, true))]}
+        />
+      )}
+      {outfit.tryOns[0] && suggested.length > 0 && (
+        <FlatLay
+          showLabels
+          suggestedLabel={t("common.suggested")}
+          className="mt-3 rounded-[20px]"
+          pieces={[...outfit.items.map(({ item }) => toPiece(item)), ...suggested.map((item) => toPiece(item, true))]}
+        />
+      )}
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         {outfit.occasion && (
