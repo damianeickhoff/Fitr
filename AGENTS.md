@@ -57,6 +57,15 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   cut-out, clears the marker and stops the rest of the batch. With or without
   a key the item page offers the free hand-off to the ChatGPT app; every route
   shares `studioPrompt` (`src/lib/studio.ts`) and `swapInStudio`.
+- Every new listing is judged, and a poor one gets an amber "retake" notice the
+  user can act on or dismiss (`Item.qualityIssue`/`qualityNote`). Free local
+  checks in `src/lib/photo-quality.ts` run first (exposure, blur, and whether
+  the cut-out reaches the crop's edge or covers almost nothing; thresholds
+  with their reasons at the top of that file). A certain finding is stored as
+  it is; otherwise the detection's own `quality` answer counts, then one small
+  `judgeListing` call looks at the finished listing. Without a key a local
+  hunch is stored and the user decides. `replacePhoto` is `addPhoto` for one
+  existing piece; a re-cut, a studio photo or "Keep it" clears the flag.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that

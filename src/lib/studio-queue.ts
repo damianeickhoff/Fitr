@@ -31,7 +31,15 @@ export async function swapInStudio(item: StudioSource, picture: Buffer, width = 
   const cutoutPath = cutout ? await saveFile(item.userId, cutout, "cutout", "png") : null;
   const { count } = await db.item.updateMany({
     where: { id: item.id, imagePath: item.imagePath },
-    data: { imagePath, cutoutPath: cutoutPath ?? item.cutoutPath, studioAt: new Date(), studioRequestedAt: null },
+    // A studio photo replaces whatever the checks disliked about the cut-out.
+    data: {
+      imagePath,
+      cutoutPath: cutoutPath ?? item.cutoutPath,
+      studioAt: new Date(),
+      studioRequestedAt: null,
+      qualityIssue: null,
+      qualityNote: null,
+    },
   });
   if (count === 0) {
     await deleteStored(imagePath, cutoutPath);

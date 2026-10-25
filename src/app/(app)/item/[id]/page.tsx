@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ItemActions } from "@/components/item-actions";
 import { ItemDetails, RecheckControls } from "@/components/item-recheck";
 import { OriginalPhoto } from "@/components/original-photo";
+import { QualityNotice } from "@/components/quality-notice";
 import { StudioPanel } from "@/components/studio-panel";
 import { StudioWatch } from "@/components/studio-watch";
 import { CATEGORY_TONE, button, cx, panel, pill, toneFor } from "@/components/ui";
@@ -15,6 +16,7 @@ import { isCategory, parseList } from "@/lib/garment";
 import { categoryLabel, formalityLabel, translator, type MessageKey } from "@/lib/i18n";
 import { imageAiEnabled } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
+import { isQualityIssue } from "@/lib/photo-quality";
 import { imageUrl } from "@/lib/storage-url";
 import { studioPending } from "@/lib/studio";
 import { wardrobeNotes, wornLabel } from "@/lib/wardrobe";
@@ -110,6 +112,9 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
       <h1 className="mt-2.5 text-[26px] leading-tight font-extrabold tracking-tight">{item.name}</h1>
 
       <ItemDetails item={item}>
+      {isQualityIssue(item.qualityIssue) && item.qualityNote && (
+        <QualityNotice id={item.id} issue={item.qualityIssue} note={item.qualityNote} />
+      )}
       {!item.aiTagged && (
         <div className="mt-3 rounded-2xl bg-[#f6e6c6] p-3 text-sm font-semibold text-[#7d4b00]">
           <p>{t("item.untagged")}</p>

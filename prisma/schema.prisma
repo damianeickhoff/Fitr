@@ -99,6 +99,12 @@ model Item {
   /// when it lands or fails. Only trusted while recent: a server restart
   /// drops the queue but not the marker (see `studioPending` in studio.ts).
   studioRequestedAt DateTime?
+  /// Why the listing may be worth retaking: a key from `QUALITY_ISSUES`
+  /// (src/lib/photo-quality.ts). Null when fine or when the user kept it;
+  /// a re-cut, a studio photo or a new photo clears it too.
+  qualityIssue String?
+  /// The sentence behind the key, local or the model's, in the profile's language.
+  qualityNote  String?
   favourite   Boolean  @default(false)
   wearCount   Int      @default(0)
   /// Drives the "not worn since" notes and the faded look of neglected pieces.
