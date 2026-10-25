@@ -1,4 +1,4 @@
-import { Clock, Heart, Loader2 } from "lucide-react";
+import { Clock, Droplets, Heart, Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { WardrobeNote } from "@/lib/wardrobe";
 import { imageUrl } from "@/lib/storage-url";
@@ -23,6 +23,8 @@ export type CardItem = {
   wornRank: number;
   /** "Studio photo coming", while the background step re-shoots it. */
   studioPending: string | null;
+  /** "In the wash": shown instead of the note while the piece is out of the wardrobe. */
+  wash: string | null;
 };
 
 /**
@@ -41,7 +43,7 @@ export function ItemCard({
   priority?: boolean;
   needsDetails: string;
 }) {
-  const note = item.aiTagged ? item.note : { text: needsDetails, tone: "amber" as Tone };
+  const note = item.wash ? null : item.aiTagged ? item.note : { text: needsDetails, tone: "amber" as Tone };
   return (
     <Link href={`/item/${item.id}`} className={cx("group block", card)}>
       <span className="relative block overflow-hidden rounded-[20px]">
@@ -67,6 +69,11 @@ export function ItemCard({
           <Loader2 size={11} strokeWidth={2.6} className="animate-spin" /> {item.studioPending}
         </span>
       )}
+      {item.wash && (
+        <span className={cx("mt-1.5 ml-1.5", pill("teal"))}>
+          <Droplets size={11} strokeWidth={2.6} /> {item.wash}
+        </span>
+      )}
       {note && <span className={cx("mt-1.5 ml-1.5", pill(note.tone))}>{note.text}</span>}
     </Link>
   );
@@ -74,7 +81,7 @@ export function ItemCard({
 
 /** The same piece as a row: for scanning dates down a list. */
 export function ItemRow({ item, faded, needsDetails }: { item: CardItem; faded?: boolean; needsDetails: string }) {
-  const note = item.aiTagged ? item.note : { text: needsDetails, tone: "amber" as Tone };
+  const note = item.wash ? null : item.aiTagged ? item.note : { text: needsDetails, tone: "amber" as Tone };
   const quiet = item.worn.never || item.idle;
   return (
     <Link href={`/item/${item.id}`} className="flex items-center gap-3 py-2.5">
@@ -90,6 +97,7 @@ export function ItemRow({ item, faded, needsDetails }: { item: CardItem; faded?:
         <span className="mt-1.5 flex flex-wrap gap-1.5">
           <span className={pill("grey")}>{item.categoryLabel}</span>
           {item.studioPending && <span className={pill("violet")}>{item.studioPending}</span>}
+          {item.wash && <span className={pill("teal")}>{item.wash}</span>}
           {note && <span className={pill(note.tone)}>{note.text}</span>}
         </span>
       </span>

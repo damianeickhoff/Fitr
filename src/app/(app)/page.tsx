@@ -10,7 +10,7 @@ import { categoryLabel, translator } from "@/lib/i18n";
 import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
 import { studioPending } from "@/lib/studio";
-import { FADE_COOKIE, VIEW_COOKIE, addedLabel, byLastWorn, isIdle, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
+import { FADE_COOKIE, VIEW_COOKIE, addedLabel, byLastWorn, inWash, isIdle, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 export default async function WardrobePage() {
   const { profile } = await requireProfile();
@@ -40,7 +40,10 @@ export default async function WardrobePage() {
 
   const now = new Date();
   const notes = wardrobeNotes(items, now, t);
-  const rank = new Map(byLastWorn(items).map((i, n) => [i.id, n]));
+  // Laundry goes to the end of the list: it is not what you are choosing from today.
+  const washing = new Set(items.filter((i) => inWash(i, now)).map((i) => i.id));
+  const sorted = byLastWorn(items);
+  const rank = new Map([...sorted.filter((i) => !washing.has(i.id)), ...sorted.filter((i) => washing.has(i.id))].map((i, n) => [i.id, n]));
   const cards = items.map((i) => ({
     id: i.id,
     name: i.name,
@@ -55,6 +58,7 @@ export default async function WardrobePage() {
     count: i.wearCount === 0 ? addedLabel(i, now, t) : t.count("worn.count", i.wearCount),
     wornRank: rank.get(i.id) ?? 0,
     studioPending: studioPending(i, now) ? t("studio.pending") : null,
+    wash: washing.has(i.id) ? t("wash.in") : null,
   }));
   const unworn = items.filter((i) => i.wearCount === 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const view: View = jar.get(VIEW_COOKIE)?.value === "list" ? "list" : "grid";

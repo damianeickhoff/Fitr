@@ -99,6 +99,10 @@ model Item {
   /// when it lands or fails. Only trusted while recent: a server restart
   /// drops the queue but not the marker (see `studioPending` in studio.ts).
   studioRequestedAt DateTime?
+  /// Set when the piece goes in the wash; outfit suggestions leave it out.
+  /// Only trusted for a fortnight (see `inWash` in wardrobe.ts), so a toggle
+  /// nobody flipped back never hides a piece for good.
+  inWashSince DateTime?
   favourite   Boolean  @default(false)
   wearCount   Int      @default(0)
   /// Drives the "not worn since" notes and the faded look of neglected pieces.

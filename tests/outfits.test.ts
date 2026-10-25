@@ -27,6 +27,7 @@ function item(category: string, colors: string[], extra: Partial<Item> = {}): It
     lastWornAt: null,
     studioAt: null,
     studioRequestedAt: null,
+    inWashSince: null,
     aiTagged: true,
     favourite: false,
     wearCount: 0,

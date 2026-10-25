@@ -56,9 +56,10 @@ export function WardrobeGrid({
   const tabs = [
     { key: "all", label: t("wardrobe.all") },
     ...(items.some((i) => i.favourite) ? [{ key: "fav", label: t("wardrobe.favourites") }] : []),
+    ...(items.some((i) => i.wash) ? [{ key: "wash", label: t("wash.in") }] : []),
     ...CATEGORY_KEYS.filter((k) => items.some((i) => i.category === k)).map((k) => ({ key: k, label: categoryLabel(t, k, "other") })),
   ];
-  const shown = items.filter((i) => tab === "all" || (tab === "fav" ? i.favourite : i.category === tab));
+  const shown = items.filter((i) => tab === "all" || (tab === "fav" ? i.favourite : tab === "wash" ? i.wash : i.category === tab));
   const rows = view === "list" ? [...shown].sort((a, b) => a.wornRank - b.wornRank) : shown;
   const needsDetails = t("note.needsDetails");
 
