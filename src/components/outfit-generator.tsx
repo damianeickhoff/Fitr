@@ -15,28 +15,40 @@ const OCCASIONS = ["Everyday", "Work", "Date night", "Weekend", "Party", "Weddin
 const WEATHER = ["Hot", "Warm", "Mild", "Cool", "Cold", "Rainy"];
 
 type Anchor = { id: string; name: string; imagePath: string } | null;
+type Day = "today" | "tomorrow";
+const DAYS: Day[] = ["today", "tomorrow"];
 
 export function OutfitGenerator({
   anchor,
   unworn,
   ai,
   disabled,
+  forecasts,
+  hasPlace,
+  day,
 }: {
   anchor: Anchor;
   /** From the never-worn overview: build every look around a piece never worn. */
   unworn: boolean;
   ai: boolean;
   disabled: boolean;
+  /** The forecast sentence for each day, when the profile has a place and the forecast came through. */
+  forecasts: Record<Day, string> | null;
+  hasPlace: boolean;
+  /** Preselected from the wardrobe's nudge. */
+  day?: Day;
 }) {
   const t = useT();
   const [state, action] = useActionState(generateOutfits, undefined);
   const [occasion, setOccasion] = useState("Everyday");
-  const [weather, setWeather] = useState("Mild");
+  // A day chip stands for its forecast sentence, which is what the stylist gets as the weather.
+  const [weather, setWeather] = useState<string>(forecasts ? (day ?? "today") : "Mild");
+  const forecast = forecasts && (weather === "today" || weather === "tomorrow") ? forecasts[weather] : null;
 
   return (
     <form action={action} className={cx(panel, "mt-4 p-4")}>
       <input type="hidden" name="occasion" value={occasion} />
-      <input type="hidden" name="weather" value={weather} />
+      <input type="hidden" name="weather" value={forecast ?? weather} />
       {anchor && <input type="hidden" name="anchor" value={anchor.id} />}
       {unworn && <input type="hidden" name="focus" value="unworn" />}
 
@@ -75,12 +87,26 @@ export function OutfitGenerator({
 
       <p className="mt-4 mb-2 text-[13px] font-bold">{t("gen.weather")}</p>
       <div className="flex flex-wrap gap-1.5">
+        {forecasts &&
+          DAYS.map((d) => (
+            <button key={d} type="button" onClick={() => setWeather(d)} className={chip(weather === d)} aria-pressed={weather === d}>
+              {t(`weather.${d}`)}
+            </button>
+          ))}
         {WEATHER.map((w) => (
           <button key={w} type="button" onClick={() => setWeather(w)} className={chip(weather === w)} aria-pressed={weather === w}>
             {t(`weather.${w}` as MessageKey)}
           </button>
         ))}
       </div>
+      {forecast && <p className="mt-2 text-[13px] font-semibold">{forecast}</p>}
+      {!hasPlace && (
+        <p className="mt-2 text-[12.5px] font-semibold text-muted">
+          <Link href="/me" className="underline decoration-line underline-offset-2 hover:text-ink">
+            {t("weather.setPlace")}
+          </Link>
+        </p>
+      )}
 
       {ai && (
         <div className="mt-4">

@@ -61,6 +61,12 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   out of outfit suggestions unless it is the anchor. Read it only through
   `inWash(item, now)` in `src/lib/wardrobe.ts`: after 14 days a forgotten
   toggle lapses and the piece counts as back.
+- Weather comes from Open-Meteo (free, no key) through `src/lib/weather.ts`:
+  a profile's `latitude`/`longitude` (set on Me) give `forecast()` and
+  `profileForecasts()`, cached in memory per place for an hour. They never
+  throw; null means "show the plain weather chips". The forecast sentence is
+  posted as the outfit request's weather, so keep its temperature first:
+  `seasonFor` reads it for the rule-based fallback.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that

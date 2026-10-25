@@ -12,6 +12,7 @@ import { isLocale, translator } from "./i18n";
 import { normalisePhoto } from "./images";
 import { profileLocale } from "./locale";
 import { deleteStored, saveFile } from "./storage";
+import { findPlaces, type Place } from "./weather";
 
 export type FormState = { error?: string; saved?: boolean } | undefined;
 
@@ -151,4 +152,37 @@ export async function saveAppearance(_: AppearanceState, form: FormData): Promis
   });
   revalidatePath("/", "layout");
   return { saved: true };
+}
+
+export type PlaceState = { places?: Place[]; error?: string } | undefined;
+
+/** Towns matching what was typed, for the profile to pick from. Nothing is saved yet. */
+export async function searchPlaces(_: PlaceState, form: FormData): Promise<PlaceState> {
+  const { profile } = await requireProfile();
+  const locale = profileLocale(profile);
+  const t = translator(locale);
+  const query = String(form.get("place") ?? "").trim().slice(0, 80);
+  if (query.length < 2) return { error: t("me.locationNone") };
+  const places = await findPlaces(query, locale);
+  if (!places) return { error: t("me.locationFailed") };
+  return places.length ? { places } : { error: t("me.locationNone") };
+}
+
+/** The picked town comes back from the browser, so only a name and coordinates that make sense are kept. */
+export async function saveLocation(place: Place | null) {
+  const { profile } = await requireProfile();
+  const valid =
+    place &&
+    typeof place.name === "string" &&
+    place.name.trim() &&
+    Number.isFinite(place.latitude) &&
+    Number.isFinite(place.longitude) &&
+    Math.abs(place.latitude) <= 90 &&
+    Math.abs(place.longitude) <= 180;
+  const placeName = valid ? [place.name, place.country].filter(Boolean).join(", ").slice(0, 120) : null;
+  await db.profile.update({
+    where: { id: profile.id },
+    data: valid ? { placeName, latitude: place.latitude, longitude: place.longitude } : { placeName: null, latitude: null, longitude: null },
+  });
+  revalidatePath("/", "layout");
 }

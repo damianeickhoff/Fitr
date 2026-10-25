@@ -42,6 +42,11 @@ model Profile {
   /// Free text about their taste ("mostly black, hates skinny jeans").
   /// Sent with every outfit and advice prompt.
   styleNotes String?
+  /// Where they live, picked on the Me page, for outfits that suit the
+  /// forecast (src/lib/weather.ts). All three set or all null.
+  placeName  String?
+  latitude   Float?
+  longitude  Float?
   createdAt  DateTime @default(now())
 
   items      Item[]
