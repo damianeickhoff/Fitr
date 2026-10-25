@@ -55,6 +55,7 @@ model Profile {
   tryOns     TryOn[]
   insights   Insight[]
   wears      Wear[]
+  trips      Trip[]
 
   @@index([userId])
 }
@@ -181,6 +182,31 @@ model Wear {
 
   @@unique([itemId, wornOn])
   @@index([profileId, wornOn])
+}
+
+/// A stay somewhere, with a packing list made of the profile's own pieces.
+model Trip {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String
+  /// Picked from Open-Meteo's geocoding, like the profile's own place.
+  placeName String
+  latitude  Float
+  longitude Float
+  /// Calendar days, "2026-11-02", like `Wear.wornOn`. Both included.
+  startDate String
+  endDate   String
+  /// What the stay holds, in the user's words: "beach and two dinners".
+  notes     String?
+  /// JSON array of `PackedPiece` (src/lib/trips.ts). Ids are not foreign
+  /// keys: a piece deleted from the wardrobe simply drops off the list.
+  packing   String   @default("[]")
+  /// JSON array of `TripTip` (src/lib/trips.ts): things worth buying for it.
+  advice    String   @default("[]")
+  createdAt DateTime @default(now())
+
+  @@index([profileId, startDate])
 }
 
 /// Photos of the user themself, used as the base for virtual try-on.

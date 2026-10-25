@@ -67,6 +67,15 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   throw; null means "show the plain weather chips". The forecast sentence is
   posted as the outfit request's weather, so keep its temperature first:
   `seasonFor` reads it for the rule-based fallback.
+- Trips (`/trips`, reached from the Outfits page, not the nav) carry their
+  packing list and buy tips as JSON on `Trip` (`PackedPiece`, `TripTip` in
+  `src/lib/trips.ts`); ids are not foreign keys, so a deleted piece just
+  drops off. Dates are day keys like `Wear.wornOn`. `stayWeather` reads
+  `forecastFor` (one 16-day Open-Meteo request per place, shared with the
+  outfit chips) and falls back to the month's season, flipped south of the
+  equator, beyond the range. `packTrip` is the stylist, `packRules` the
+  keyless fallback; both go through `cleanPacking`, which drops unknown ids
+  and flags laundry in the reason. Packing again keeps existing ticks.
 - Wearing is a history: one `Wear` row per piece per day, `wornOn` a
   "YYYY-MM-DD" day in the server's time zone (`dayKey` in `src/lib/wardrobe.ts`).
   Log and remove wears only through `logWears`/`removeWear` (`src/lib/wear.ts`):
