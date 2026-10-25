@@ -36,6 +36,17 @@ const en = {
   "stage.scan": "Scan to open FITR there: it's where the camera and the mirror are.",
   "stage.wifi": "Your phone needs to be on the same wifi as this computer.",
 
+  "install.title": "Put FITR on your home screen",
+  "install.body": "It opens full screen, like any other app.",
+  "install.add": "Add to home screen",
+  "install.ios.share": "Tap {share} Share in Safari's toolbar",
+  "install.ios.add": "Choose Add to Home Screen",
+  "install.dismiss": "Not now",
+
+  "offline.title": "You're offline",
+  "offline.body": "FITR needs a connection to open your wardrobe. Check your wifi or mobile data and try again.",
+  "offline.retry": "Try again",
+
   "common.new": "New",
   "common.back": "Back",
   "common.save": "Save",
@@ -485,6 +496,17 @@ const nl: Record<MessageKey, string> = {
   "stage.made": "Gemaakt voor je telefoon.",
   "stage.scan": "Scan om FITR daar te openen: daar zijn de camera en de spiegel.",
   "stage.wifi": "Je telefoon moet op dezelfde wifi zitten als deze computer.",
+
+  "install.title": "Zet FITR op je beginscherm",
+  "install.body": "Dan opent het schermvullend, net als elke andere app.",
+  "install.add": "Zet op beginscherm",
+  "install.ios.share": "Tik op {share} Deel in de werkbalk van Safari",
+  "install.ios.add": "Kies Zet op beginscherm",
+  "install.dismiss": "Niet nu",
+
+  "offline.title": "Je bent offline",
+  "offline.body": "FITR heeft verbinding nodig om je garderobe te openen. Controleer je wifi of mobiele data en probeer het opnieuw.",
+  "offline.retry": "Opnieuw proberen",
 
   "common.new": "Nieuw",
   "common.back": "Terug",

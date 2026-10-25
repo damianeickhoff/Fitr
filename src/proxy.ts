@@ -16,6 +16,10 @@ export async function proxy(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+// The offline page, the service worker and the icons load signed out too: the
+// worker installs from the sign-in page, and a redirect would break it.
 export const config = {
-  matcher: ["/((?!login|_next/static|_next/image|manifest\.webmanifest|icon|apple-icon|favicon\.ico).*)"],
+  matcher: [
+    "/((?!login|offline|sw\.js|_next/static|_next/image|manifest\.webmanifest|icon|apple-icon|apple-touch-icon|favicon\.ico).*)",
+  ],
 };

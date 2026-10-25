@@ -77,6 +77,16 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that
   `PhoneStage` centres on wide screens. Don't add desktop breakpoints.
+- Home-screen app: `src/app/manifest.ts` (Android) and the root layout's
+  `appleWebApp`/`icons` metadata (iOS) are kept in step. Icons are rendered
+  from `public/icon.svg` by `npm run icons`; commit the outputs. `public/sw.js`
+  is registered in production builds only and caches just the `/offline`
+  page with its static files and `/api/images/*` (immutable, newest 300);
+  never other HTML or server actions. Bump its `VERSION` when changing it.
+  `/offline`, `/sw.js` and the icons stay outside the sign-in gate in
+  `src/proxy.ts`. `InstallHint` shows on the wardrobe page only.
+- Testing a production build on `localhost` while other worktrees' servers
+  run: they share the session cookie across ports, so use `127.0.0.1`.
 - Warm paper look: cream page, near-white `panel`/`card` surfaces edged with a
   hairline (`src/components/ui.ts`), Nunito, a floating pill nav. No tags or
   monospace caps labels: status and categories are colourful pills (`pill()`),

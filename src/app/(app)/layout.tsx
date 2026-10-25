@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { InstallHint } from "@/components/install-hint";
 import { LocaleProvider } from "@/components/locale";
 import { Nav } from "@/components/nav";
 import { Wordmark } from "@/components/wordmark";
@@ -31,6 +32,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <ChevronDown size={14} strokeWidth={2.4} className="text-muted" />
         </Link>
       </header>
+      <InstallHint />
       <main className="px-5 pt-2 pb-32">{children}</main>
       <Nav />
     </LocaleProvider>

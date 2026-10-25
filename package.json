@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "postinstall": "prisma generate",
     "db:seed-demo": "node scripts/seed-demo.mjs",
-    "db:reframe": "node scripts/reframe-listings.mts"
+    "db:reframe": "node scripts/reframe-listings.mts",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
