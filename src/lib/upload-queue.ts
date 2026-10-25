@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { shrinkImage } from "@/lib/client-image";
-import { addPhoto, type AddPhotoResult } from "@/lib/item-actions";
+import { addPhoto, replacePhoto, type AddPhotoResult } from "@/lib/item-actions";
 
 export type Upload = {
   key: string;
@@ -10,6 +10,8 @@ export type Upload = {
   preview: string;
   status: "waiting" | "working" | "done" | "failed";
   result?: AddPhotoResult;
+  /** A retake: this photo replaces that piece's pictures instead of adding one. */
+  replaces?: string;
   /**
    * Only a request that never got an answer is worth sending again. The
    * server's own refusals (no clothing, too large) would just repeat, and its
@@ -41,14 +43,16 @@ function update(key: string, patch: Partial<Upload>) {
   publish(uploads.map((u) => (u.key === key ? { ...u, ...patch } : u)));
 }
 
-function send(key: string, file: File) {
+function send(key: string, file: File, replaces?: string) {
   chain = chain.then(async () => {
     update(key, { status: "working" });
     try {
       const form = new FormData();
       form.set("photo", await shrinkImage(file), "photo.jpg");
-      const result = await addPhoto(form);
+      const result = replaces ? await replacePhoto(replaces, form) : await addPhoto(form);
       update(key, { status: result.ok ? "done" : "failed", result });
+      // The old card for the piece would show the picture that was just replaced.
+      if (replaces && result.ok) dropItem(replaces, key);
     } catch {
       update(key, {
         status: "failed",
@@ -69,12 +73,39 @@ export function enqueueUploads(files: FileList | File[] | null, failed?: string)
   }
 }
 
+/** A retake for one flagged piece: queued like an upload, but it replaces the piece's pictures. */
+export function enqueueReplacement(itemId: string, file: File | undefined, failed?: string) {
+  if (failed) failedMessage = failed;
+  if (!file) return;
+  const key = `${itemId}-${file.size}-${Math.random()}`;
+  publish([{ key, file, preview: URL.createObjectURL(file), status: "waiting", replaces: itemId }, ...uploads]);
+  send(key, file, itemId);
+}
+
+/** Takes a piece out of every earlier result, except the upload named; an upload left empty goes too. */
+function dropItem(itemId: string, except: string) {
+  publish(
+    uploads
+      .map((u) => (u.key !== except && u.result?.ok ? { ...u, result: { ...u.result, items: u.result.items.filter((i) => i.id !== itemId) } } : u))
+      .filter((u) => !(u.key !== except && u.result?.ok && u.result.items.length === 0)),
+  );
+}
+
+/** The owner kept a flagged piece: its card stops suggesting a retake. */
+export function clearQuality(itemId: string) {
+  publish(
+    uploads.map((u) =>
+      u.result?.ok ? { ...u, result: { ...u.result, items: u.result.items.map((i) => (i.id === itemId ? { ...i, quality: null } : i)) } } : u,
+    ),
+  );
+}
+
 /** Sends a failed photo again from the file still held in memory, so it needn't be re-taken. */
 export function retryUpload(key: string) {
   const upload = uploads.find((u) => u.key === key);
   if (!upload?.retryable || upload.status !== "failed") return;
   update(key, { status: "waiting", result: undefined, retryable: false });
-  send(key, upload.file);
+  send(key, upload.file, upload.replaces);
 }
 
 /** Every new listing still waiting for its studio photo. */

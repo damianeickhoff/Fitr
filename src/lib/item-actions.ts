@@ -6,19 +6,22 @@ import { after } from "next/server";
 import { z } from "zod";
 import { requireProfile } from "./auth";
 import { db } from "./db";
-import { CATEGORY_KEYS, SEASONS } from "./garment";
+import { CATEGORY_KEYS, SEASONS, parseList } from "./garment";
 import { aiEnabled, describeAiError } from "./gemini";
-import { translator, type Locale } from "./i18n";
+import { translator, type Locale, type MessageKey } from "./i18n";
 import { describeImageError, imageAiEnabled } from "./image-gen";
-import { makeListing, normalisePhoto, type Box } from "./images";
+import { makeListing, normalisePhoto, smallCopy, type Box, type Listing } from "./images";
 import { profileLocale } from "./locale";
+import { checkListing, isQualityIssue, worstFinding, type QualityIssue } from "./photo-quality";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { studioPending } from "./studio";
 import { queueStudio, shootStudio, studioOnUpload, swapInStudio } from "./studio-queue";
 import { suggestionValues, type DetailValues } from "./suggest";
-import { describeItem, detectItems } from "./vision";
+import { describeItem, detectItems, judgeListing, type PhotoQuality } from "./vision";
 import { dayKey, isWearDay } from "./wardrobe";
 import { logWears, removeWear } from "./wear";
+
+export type ListingQualityNote = { issue: QualityIssue; note: string };
 
 export type AddedItem = {
   id: string;
@@ -28,20 +31,66 @@ export type AddedItem = {
   colors: string[];
   /** A studio photo is on its way to replace this listing. */
   studioPending: boolean;
+  /** Why the listing is worth retaking, when the checks found something. */
+  quality: ListingQualityNote | null;
 };
 
 export type AddPhotoResult =
   | { ok: true; items: AddedItem[]; warning?: string }
   | { ok: false; error: string };
 
-/** Saves both images for one piece; the cut-out is optional. */
-async function saveImages(userId: string, photo: { data: Buffer; width: number; height: number }, box?: Box) {
-  const { listing, cutout } = await makeListing(photo.data, photo.width, photo.height, box);
+type Quality = { qualityIssue: QualityIssue | null; qualityNote: string | null };
+
+/**
+ * What to tell the owner about a new listing, if anything. The local checks
+ * run first and are free; a certain finding is kept as it is. Otherwise the
+ * model's opinion from the detection counts, and failing that one small call
+ * looks at the finished listing. Without a key a local hunch is kept too and
+ * the owner decides. Nothing here may fail the upload.
+ */
+async function assessQuality(made: Listing, hint: PhotoQuality | undefined, locale: Locale): Promise<Quality> {
+  const t = translator(locale);
+  const none: Quality = { qualityIssue: null, qualityNote: null };
+  const sentence = (issue: QualityIssue, note?: string) => ({
+    qualityIssue: issue,
+    qualityNote: note?.trim() || t(`quality.note.${issue}` as MessageKey),
+  });
+  try {
+    const local = worstFinding(await checkListing(made.crop, made.removed));
+    const fromLocal = local ? sentence(local.key) : none;
+    if (local?.severity === "major") return fromLocal;
+    if (hint && !hint.ok && hint.issue !== "fine") return sentence(hint.issue, hint.note);
+    if (!aiEnabled()) return fromLocal;
+    try {
+      const judged = await judgeListing(await smallCopy(made.listing), locale);
+      return !judged.ok && judged.issue !== "fine" ? sentence(judged.issue, judged.note) : none;
+    } catch (error) {
+      console.error("[quality] no second opinion:", describeAiError(error));
+      return fromLocal;
+    }
+  } catch (error) {
+    console.error("[quality] checks failed:", error);
+    return none;
+  }
+}
+
+/** Saves both images for one piece, the cut-out being optional, and judges the result. */
+async function savePiece(
+  userId: string,
+  photo: { data: Buffer; width: number; height: number },
+  locale: Locale,
+  detected?: { box: number[]; quality?: PhotoQuality },
+) {
+  const made = await makeListing(photo.data, photo.width, photo.height, detected?.box as Box | undefined);
   return {
-    imagePath: await saveFile(userId, listing, "item"),
-    cutoutPath: cutout ? await saveFile(userId, cutout, "cutout", "png") : null,
+    imagePath: await saveFile(userId, made.listing, "item"),
+    cutoutPath: made.cutout ? await saveFile(userId, made.cutout, "cutout", "png") : null,
+    ...(await assessQuality(made, detected?.quality, locale)),
   };
 }
+
+const qualityNote = (item: { qualityIssue: string | null; qualityNote: string | null }): ListingQualityNote | null =>
+  isQualityIssue(item.qualityIssue) && item.qualityNote ? { issue: item.qualityIssue, note: item.qualityNote } : null;
 
 const MAX_UPLOAD = 15 * 1024 * 1024;
 
@@ -93,7 +142,7 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
       }
       const created: AddedItem[] = [];
       for (const d of detected) {
-        const images = await saveImages(user.id, photo, d.box as Box);
+        const images = await savePiece(user.id, photo, locale, d);
         const item = await db.item.create({
           data: {
             userId: user.id,
@@ -122,6 +171,7 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
           category: item.category,
           colors: d.colors.slice(0, 3),
           studioPending: false,
+          quality: qualityNote(item),
         });
       }
       const studio = await studioAfterUpload(profile.id, created.map((c) => c.id));
@@ -139,16 +189,71 @@ export async function addPhoto(form: FormData): Promise<AddPhotoResult> {
       name: t("common.new"),
       category: "top",
       photoPath,
-      ...(await saveImages(user.id, photo)),
+      ...(await savePiece(user.id, photo, locale)),
     },
   });
   const studio = await studioAfterUpload(profile.id, [item.id]);
   revalidatePath("/", "layout");
   return {
     ok: true,
-    items: [{ id: item.id, name: item.name, imagePath: item.imagePath, category: item.category, colors: [], studioPending: studio }],
+    items: [
+      { id: item.id, name: item.name, imagePath: item.imagePath, category: item.category, colors: [], studioPending: studio, quality: qualityNote(item) },
+    ],
     warning: warning ?? t("err.noAiTag"),
   };
+}
+
+/**
+ * A new photo for a piece that was flagged: the same pipeline as an upload,
+ * but the piece keeps its details, outfits and wear history and only its
+ * pictures change. The studio step runs again when it is on, as the old
+ * studio photo showed the old shot.
+ */
+export async function replacePhoto(id: string, form: FormData): Promise<AddPhotoResult> {
+  const { user, profile } = await requireProfile();
+  const locale = profileLocale(profile);
+  const t = translator(locale);
+  const item = await ownItem(profile.id, id);
+  const file = form.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: t("err.choosePhoto") };
+  if (file.size > MAX_UPLOAD) return { ok: false, error: t("err.tooLarge") };
+
+  let photo;
+  try {
+    photo = await normalisePhoto(Buffer.from(await file.arrayBuffer()));
+  } catch {
+    return { ok: false, error: t("err.notPhoto") };
+  }
+  const photoPath = await saveFile(user.id, photo.data, "photo");
+  const piece = await savePiece(user.id, photo, locale, await findPiece(photo.data, item.category, locale));
+  await db.item.update({ where: { id }, data: { photoPath, ...piece, studioAt: null, studioRequestedAt: null } });
+  // The old photo may still be another piece's original (one photo, several pieces).
+  const sharing = await db.item.count({ where: { photoPath: item.photoPath } });
+  await deleteStored(item.imagePath === item.photoPath ? null : item.imagePath, item.cutoutPath, sharing === 0 ? item.photoPath : null);
+  const studio = await studioAfterUpload(profile.id, [id]);
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    items: [
+      {
+        id,
+        name: item.name,
+        imagePath: piece.imagePath,
+        category: item.category,
+        colors: parseList(item.colors),
+        studioPending: studio,
+        quality: qualityNote(piece),
+      },
+    ],
+  };
+}
+
+/** The owner has looked and is happy with the listing as it is. */
+export async function dismissQuality(id: string) {
+  const { profile } = await requireProfile();
+  await ownItem(profile.id, id);
+  await db.item.update({ where: { id }, data: { qualityIssue: null, qualityNote: null } });
+  revalidatePath("/", "layout");
 }
 
 async function ownItem(profileId: string, id: string) {
@@ -274,14 +379,13 @@ export async function deleteItem(id: string) {
   redirect("/");
 }
 
-/** Gemini's box for the piece in a photo: the detected item of its category, else the largest. */
-async function findBox(photo: Buffer, category: string, locale: Locale): Promise<Box | undefined> {
+/** Gemini's view of the piece in a photo: the detected item of its category, else the largest. */
+async function findPiece(photo: Buffer, category: string, locale: Locale) {
   if (!aiEnabled()) return undefined;
   try {
     const detected = await detectItems(photo, locale);
     const area = (d: { box: number[] }) => (d.box[2] - d.box[0]) * (d.box[3] - d.box[1]);
-    const pick = detected.find((d) => d.category === category) ?? [...detected].sort((p, q) => area(q) - area(p))[0];
-    return pick?.box as Box | undefined;
+    return detected.find((d) => d.category === category) ?? [...detected].sort((p, q) => area(q) - area(p))[0];
   } catch {
     return undefined;
   }
@@ -300,11 +404,15 @@ export async function recutItem(id: string): Promise<{ error?: string }> {
     const photo = await normalisePhoto(await readStored(item.photoPath));
     // The upload cropped to Gemini's box, which is what kept the hanger out;
     // ask again when a key is there, and fall back to the whole photo quietly.
-    const box = await findBox(photo.data, item.category, profileLocale(profile));
+    const box = (await findPiece(photo.data, item.category, profileLocale(profile)))?.box as Box | undefined;
     const { listing, cutout } = await makeListing(photo.data, photo.width, photo.height, box);
     const imagePath = await saveFile(user.id, listing, "item");
     const cutoutPath = cutout ? await saveFile(user.id, cutout, "cutout", "png") : null;
-    await db.item.update({ where: { id }, data: { imagePath, cutoutPath, studioAt: null, studioRequestedAt: null } });
+    // The owner asked for this cut: whatever was flagged, they have now dealt with it.
+    await db.item.update({
+      where: { id },
+      data: { imagePath, cutoutPath, studioAt: null, studioRequestedAt: null, qualityIssue: null, qualityNote: null },
+    });
     // The original photo is never deleted; a listing that is that same file is kept too.
     await deleteStored(item.imagePath === item.photoPath ? null : item.imagePath, item.cutoutPath);
   } catch {

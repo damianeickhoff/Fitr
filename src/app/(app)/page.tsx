@@ -57,7 +57,8 @@ export default async function WardrobePage() {
     favourite: i.favourite,
     aiTagged: i.aiTagged,
     idle: isIdle(i, now),
-    note: notes.get(i.id) ?? null,
+    // A flagged photo outranks the wear notes: it is the one thing to act on.
+    note: i.qualityIssue ? { text: t("quality.check"), tone: "amber" as const } : (notes.get(i.id) ?? null),
     worn: wornLabel(i, now, t),
     count: i.wearCount === 0 ? addedLabel(i, now, t) : t.count("worn.count", i.wearCount),
     wornRank: rank.get(i.id) ?? 0,

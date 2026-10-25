@@ -60,7 +60,16 @@ export async function blurredListing(crop: Buffer) {
  * Everything a new piece needs from its photo: the shop listing and, when the
  * background could be removed, the transparent cut-out for flat lays.
  */
-export async function makeListing(photo: Buffer, width: number, height: number, box?: Box | null) {
+export type Listing = {
+  listing: Buffer;
+  cutout: Buffer | null;
+  /** The part of the photo the piece was cut from, for the quality checks. */
+  crop: Buffer;
+  /** The remover's output at the crop's size, before trimming: where the piece sits in the crop. */
+  removed: Buffer | null;
+};
+
+export async function makeListing(photo: Buffer, width: number, height: number, box?: Box | null): Promise<Listing> {
   const crop = await cropToBox(photo, width, height, box);
   try {
     // The remover tends to cut a lining out as if it were wall; see interior.ts.
@@ -73,11 +82,16 @@ export async function makeListing(photo: Buffer, width: number, height: number, 
     // An empty cut-out means the model found no subject; the plain crop is better.
     const { width: cw = 0, height: ch = 0 } = await sharp(cutout).metadata();
     if (cw < 40 || ch < 40) throw new Error("Cut-out came back empty.");
-    return { listing: await framedCutout(cutout), cutout };
+    return { listing: await framedCutout(cutout), cutout, crop, removed };
   } catch (error) {
     console.error("[cutout] falling back to the plain crop:", error);
-    return { listing: await blurredListing(crop), cutout: null };
+    return { listing: await blurredListing(crop), cutout: null, crop, removed: null };
   }
+}
+
+/** A small JPEG copy, for a model call that only needs to look, not read. */
+export async function smallCopy(image: Buffer, width = 512) {
+  return sharp(image).resize({ width, height: width, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
 }
 
 /** Model output arrives as PNG or WebP; store everything as JPEG. */

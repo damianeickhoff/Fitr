@@ -109,6 +109,12 @@ model Item {
   /// Only trusted for a fortnight (see `inWash` in wardrobe.ts), so a toggle
   /// nobody flipped back never hides a piece for good.
   inWashSince DateTime?
+  /// Why the listing may be worth retaking: a key from `QUALITY_ISSUES`
+  /// (src/lib/photo-quality.ts). Null when fine or when the user kept it;
+  /// a re-cut, a studio photo or a new photo clears it too.
+  qualityIssue String?
+  /// The sentence behind the key, local or the model's, in the profile's language.
+  qualityNote  String?
   favourite   Boolean  @default(false)
   /// Denormalised from `Wear`, kept in step by every write (src/lib/wear.ts).
   /// Can exceed the rows: wears from before the history only left a count.
