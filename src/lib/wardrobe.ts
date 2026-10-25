@@ -82,6 +82,17 @@ export function neverWorn<T extends NoteInput>(items: T[], now = new Date()) {
   };
 }
 
+/**
+ * A piece left in the wash longer than this quietly counts as back: people
+ * forget to flip the toggle, and a forgotten one must not hide a piece for good.
+ */
+export const WASH_DAYS = 14;
+
+/** Whether a piece is in the wash right now. Every reader goes through this, never `inWashSince` alone. */
+export function inWash(item: { inWashSince: Date | null }, now = new Date()) {
+  return item.inWashSince !== null && now.getTime() - item.inWashSince.getTime() <= WASH_DAYS * DAY;
+}
+
 /** List view order: most recently worn first, never-worn pieces at the end, newest of those first. */
 export function byLastWorn<T extends NoteInput>(items: T[]) {
   return [...items].sort((a, b) => {

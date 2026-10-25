@@ -1,12 +1,13 @@
 "use client";
 
-import { Heart, Scissors, Shirt, Trash2, Wand2 } from "lucide-react";
+import { Droplets, Heart, Scissors, Shirt, Trash2, Wand2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { deleteItem, makeStudioPhoto, markWorn, recutItem, toggleFavourite } from "@/lib/item-actions";
+import { toggleWash } from "@/lib/wash-actions";
 import { useT } from "./locale";
 import { button, cx } from "./ui";
 
-export function ItemActions({ id, favourite, studio }: { id: string; favourite: boolean; studio: boolean }) {
+export function ItemActions({ id, favourite, washing, studio }: { id: string; favourite: boolean; washing: boolean; studio: boolean }) {
   const t = useT();
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -30,6 +31,10 @@ export function ItemActions({ id, favourite, studio }: { id: string; favourite: 
           className={button.secondary}
         >
           <Shirt size={16} /> {t("actions.woreToday")}
+        </button>
+        <button type="button" disabled={pending} onClick={() => start(() => toggleWash(id))} className={button.secondary}>
+          <Droplets size={16} className={cx(washing && "text-[#0f5f58]")} />
+          {washing ? t("wash.back") : t("wash.in")}
         </button>
         {studio && (
           <button

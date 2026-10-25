@@ -12,6 +12,7 @@ import { profileLocale } from "./locale";
 import { ruleOutfits, styleOutfits, type DraftOutfit, type OutfitRequest } from "./outfits";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { tryOnPrompt } from "./try-on";
+import { inWash } from "./wardrobe";
 
 export type GenerateState = { error?: string; notice?: string } | undefined;
 
@@ -19,7 +20,7 @@ export async function generateOutfits(_: GenerateState, form: FormData): Promise
   const { user, profile } = await requireProfile();
   const locale = profileLocale(profile);
   const t = translator(locale);
-  const items = await db.item.findMany({ where: { profileId: profile.id } });
+  const items = (await db.item.findMany({ where: { profileId: profile.id } })).filter((i) => !inWash(i) || i.id === form.get("anchor"));
 
   const hasBase =
     items.some((i) => i.category === "dress") ||

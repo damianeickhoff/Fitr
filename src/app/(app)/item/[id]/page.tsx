@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Clock, Droplets, Loader2, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,7 +17,7 @@ import { imageAiEnabled } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
 import { studioPending } from "@/lib/studio";
-import { wardrobeNotes, wornLabel } from "@/lib/wardrobe";
+import { inWash, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 async function load(id: string) {
   const { profile } = await requireProfile();
@@ -65,6 +65,7 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
   const note = wardrobeNotes(all, now, t).get(item.id);
   const worn = wornLabel(item, now, t);
   const pending = studioPending(item, now);
+  const washing = inWash(item, now);
   const recheck = aiEnabled();
 
   const facts: [string, string | null | undefined][] = [
@@ -102,6 +103,11 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
         {pending && (
           <span className={pill("violet", "md")}>
             <Loader2 size={12} strokeWidth={2.6} className="animate-spin" /> {t("studio.pending")}
+          </span>
+        )}
+        {washing && (
+          <span className={pill("teal", "md")}>
+            <Droplets size={12} strokeWidth={2.6} /> {t("wash.in")}
           </span>
         )}
         {item.favourite && <span className={pill("pink", "md")}>{t("item.favourite")}</span>}
@@ -169,7 +175,7 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
         </section>
       )}
 
-      <ItemActions id={item.id} favourite={item.favourite} studio={imageAiEnabled() && !pending} />
+      <ItemActions id={item.id} favourite={item.favourite} washing={washing} studio={imageAiEnabled() && !pending} />
       {recheck && <RecheckControls spot="actions" className="mt-3" />}
       {!pending && <StudioPanel id={item.id} name={item.name} aiTagged={item.aiTagged} photoPath={item.photoPath} />}
       {pending && <StudioWatch />}

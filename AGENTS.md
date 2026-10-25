@@ -57,6 +57,10 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   cut-out, clears the marker and stops the rest of the batch. With or without
   a key the item page offers the free hand-off to the ChatGPT app; every route
   shares `studioPrompt` (`src/lib/studio.ts`) and `swapInStudio`.
+- "In the wash" (`Item.inWashSince`, `src/lib/wash-actions.ts`) keeps a piece
+  out of outfit suggestions unless it is the anchor. Read it only through
+  `inWash(item, now)` in `src/lib/wardrobe.ts`: after 14 days a forgotten
+  toggle lapses and the piece counts as back.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that

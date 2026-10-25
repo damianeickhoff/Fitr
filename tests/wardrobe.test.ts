@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { translator } from "@/lib/i18n";
-import { addedLabel, byLastWorn, isIdle, neverWorn, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
+import { addedLabel, byLastWorn, inWash, isIdle, neverWorn, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 const now = new Date("2026-10-15T12:00:00Z");
 const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
@@ -92,5 +92,20 @@ describe("byLastWorn", () => {
   it("puts the most recently worn first and the never worn last", () => {
     const order = byLastWorn([piece("never-old", 0, null, 100), piece("week", 2, 7), piece("never-new", 0, null, 3), piece("today", 1, 0)]);
     expect(order.map((i) => i.id)).toEqual(["today", "week", "never-new", "never-old"]);
+  });
+});
+
+describe("inWash", () => {
+  it("is out when never put in the wash", () => {
+    expect(inWash({ inWashSince: null }, now)).toBe(false);
+  });
+
+  it("is in for a fortnight", () => {
+    expect(inWash({ inWashSince: daysAgo(0) }, now)).toBe(true);
+    expect(inWash({ inWashSince: daysAgo(14) }, now)).toBe(true);
+  });
+
+  it("quietly counts as back once forgotten for longer", () => {
+    expect(inWash({ inWashSince: daysAgo(15) }, now)).toBe(false);
   });
 });

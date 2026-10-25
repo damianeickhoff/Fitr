@@ -278,6 +278,10 @@ const en = {
   "studio.appBody": "Sends the photo as you took it and a ready-made prompt to ChatGPT. Save the product photo it makes, then add it here: it becomes this piece's listing.",
   "studio.added": "Studio photo added.",
 
+  "wash.in": "In the wash",
+  "wash.back": "Back from the wash",
+  "wash.outfit": "Into the wash",
+
   "tips.kicker": "Personal shopper",
   "tips.title": "What would make your wardrobe work harder",
   "tips.refresh": "Refresh advice",
@@ -674,6 +678,10 @@ const nl: Record<MessageKey, string> = {
   "studio.title": "Maak er een studiofoto van",
   "studio.appBody": "Stuurt de foto zoals je hem nam en een kant-en-klare prompt naar ChatGPT. Bewaar de productfoto die het maakt en voeg die hier toe: dan wordt dat de foto van dit stuk.",
   "studio.added": "Studiofoto toegevoegd.",
+
+  "wash.in": "In de was",
+  "wash.back": "Terug uit de was",
+  "wash.outfit": "In de was doen",
 
   "tips.kicker": "Personal shopper",
   "tips.title": "Wat je garderobe harder zou laten werken",

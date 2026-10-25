@@ -1,8 +1,9 @@
 "use client";
 
-import { Bookmark, Shirt, Trash2 } from "lucide-react";
+import { Bookmark, Droplets, Shirt, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { deleteOutfit, toggleSaved, woreOutfit } from "@/lib/outfit-actions";
+import { washOutfit } from "@/lib/wash-actions";
 import { useT } from "./locale";
 import { button, cx } from "./ui";
 
@@ -10,6 +11,7 @@ export function OutfitActions({ id, saved }: { id: string; saved: boolean }) {
   const t = useT();
   const [pending, start] = useTransition();
   const [worn, setWorn] = useState(false);
+  const [washed, setWashed] = useState(false);
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -35,6 +37,21 @@ export function OutfitActions({ id, saved }: { id: string; saved: boolean }) {
       >
         <Shirt size={16} /> {worn ? t("outfit.logged") : t("outfit.wearing")}
       </button>
+      {worn && (
+        <button
+          type="button"
+          disabled={pending || washed}
+          onClick={() =>
+            start(async () => {
+              await washOutfit(id);
+              setWashed(true);
+            })
+          }
+          className={button.secondary}
+        >
+          <Droplets size={16} /> {washed ? t("wash.in") : t("wash.outfit")}
+        </button>
+      )}
       <button
         type="button"
         disabled={pending}
