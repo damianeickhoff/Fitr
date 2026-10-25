@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#2a44e8"/>
-  <path d="M20 14h28v36H14V20z" fill="#e6d19c"/>
-  <circle cx="21" cy="21" r="3" fill="#2a44e8"/>
-  <path d="M24 32h16M24 39h11" stroke="#3a2f14" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The source for every FITR icon: `npm run icons` renders the PNGs and the favicon from it. -->
+  <rect width="512" height="512" rx="116" fill="#7a2e2e"/>
+  <!-- A stroked F with round ends, after Nunito's rounded terminals; no font needed to render it. -->
+  <path d="M186 372V140h140M186 252h110" fill="none" stroke="#f7f2e9" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
