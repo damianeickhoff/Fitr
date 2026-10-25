@@ -93,6 +93,10 @@ export function WardrobeGrid({
             </Link>
           </>
         )}
+        {" · "}
+        <Link href="/worn" className="hover:text-ink hover:underline">
+          {t("calendar.link")}
+        </Link>
       </p>
 
       {banner}

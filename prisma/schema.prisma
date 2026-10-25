@@ -49,6 +49,7 @@ model Profile {
   selfPhotos SelfPhoto[]
   tryOns     TryOn[]
   insights   Insight[]
+  wears      Wear[]
 
   @@index([userId])
 }
@@ -100,12 +101,16 @@ model Item {
   /// drops the queue but not the marker (see `studioPending` in studio.ts).
   studioRequestedAt DateTime?
   favourite   Boolean  @default(false)
+  /// Denormalised from `Wear`, kept in step by every write (src/lib/wear.ts).
+  /// Can exceed the rows: wears from before the history only left a count.
   wearCount   Int      @default(0)
-  /// Drives the "not worn since" notes and the faded look of neglected pieces.
+  /// Midnight of the latest `Wear.wornOn`. Drives the "not worn since" notes
+  /// and the faded look of neglected pieces.
   lastWornAt  DateTime?
   createdAt   DateTime @default(now())
 
   outfitItems OutfitItem[]
+  wears       Wear[]
 
   @@index([profileId, category])
 }
@@ -130,6 +135,7 @@ model Outfit {
 
   items  OutfitItem[]
   tryOns TryOn[]
+  wears  Wear[]
 
   @@index([profileId, saved])
 }
@@ -142,6 +148,24 @@ model OutfitItem {
   position Int    @default(0)
 
   @@id([outfitId, itemId])
+}
+
+/// One piece worn on one day. Wearing it twice on a day is still one wear.
+model Wear {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  /// Set when it was logged through "Wore it" on an outfit.
+  outfitId  String?
+  outfit    Outfit?  @relation(fields: [outfitId], references: [id], onDelete: SetNull)
+  /// A calendar day, "2026-10-25", in the server's time zone (src/lib/wardrobe.ts `dayKey`).
+  wornOn    String
+  createdAt DateTime @default(now())
+
+  @@unique([itemId, wornOn])
+  @@index([profileId, wornOn])
 }
 
 /// Photos of the user themself, used as the base for virtual try-on.

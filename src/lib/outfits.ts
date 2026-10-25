@@ -12,6 +12,8 @@ export type OutfitRequest = {
   anchorItemId: string | null;
   /** Build every look around a piece that has never been worn. */
   unwornFirst?: boolean;
+  /** Pieces worn in the last week, so the stylist doesn't lead with them again. */
+  recentIds?: string[];
 };
 
 export type DraftOutfit = {
@@ -85,6 +87,7 @@ export async function styleOutfits(items: Item[], request: OutfitRequest, styleN
     styleNotes ? `The client's taste: ${styleNotes}` : null,
     anchor ? `Every outfit must include id=${anchor.id} (${anchor.name}).` : null,
     request.unwornFirst ? "Build each outfit around a different piece that has been worn 0 times; those are the point of this round." : null,
+    request.recentIds?.length ? `Worn in the last week, avoid repeating as the main piece: ${request.recentIds.map((id) => `id=${id}`).join(", ")}` : null,
     "",
     "Put together 3 outfits.",
     locale === "nl" ? "Write every name, reasoning and tip in Dutch." : "Write in British English.",

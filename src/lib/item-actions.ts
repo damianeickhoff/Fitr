@@ -17,6 +17,8 @@ import { studioPending } from "./studio";
 import { queueStudio, shootStudio, studioOnUpload, swapInStudio } from "./studio-queue";
 import { suggestionValues, type DetailValues } from "./suggest";
 import { describeItem, detectItems } from "./vision";
+import { dayKey, isWearDay } from "./wardrobe";
+import { logWears, removeWear } from "./wear";
 
 export type AddedItem = {
   id: string;
@@ -244,10 +246,20 @@ export async function toggleFavourite(id: string) {
   revalidatePath("/", "layout");
 }
 
-export async function markWorn(id: string) {
+/** Logs a wear today, or on a past day the user forgot to log. */
+export async function markWorn(id: string, wornOn?: string) {
   const { profile } = await requireProfile();
   await ownItem(profile.id, id);
-  await db.item.update({ where: { id }, data: { wearCount: { increment: 1 }, lastWornAt: new Date() } });
+  const day = wornOn ?? dayKey(new Date());
+  if (!isWearDay(day)) throw new Error("Not a day a piece can have been worn.");
+  await logWears(profile.id, [id], day);
+  revalidatePath("/", "layout");
+}
+
+export async function unmarkWorn(id: string, wornOn: string) {
+  const { profile } = await requireProfile();
+  await ownItem(profile.id, id);
+  await removeWear(id, wornOn);
   revalidatePath("/", "layout");
 }
 

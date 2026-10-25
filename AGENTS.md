@@ -57,6 +57,12 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   cut-out, clears the marker and stops the rest of the batch. With or without
   a key the item page offers the free hand-off to the ChatGPT app; every route
   shares `studioPrompt` (`src/lib/studio.ts`) and `swapInStudio`.
+- Wearing is a history: one `Wear` row per piece per day, `wornOn` a
+  "YYYY-MM-DD" day in the server's time zone (`dayKey` in `src/lib/wardrobe.ts`).
+  Log and remove wears only through `logWears`/`removeWear` (`src/lib/wear.ts`):
+  they keep `Item.wearCount` and `lastWornAt` (that day's midnight) in step,
+  which the cards still read. The count can exceed the rows, as wears from
+  before the history only left a number.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that
