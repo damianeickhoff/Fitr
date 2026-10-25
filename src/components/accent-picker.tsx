@@ -87,7 +87,7 @@ export function AccentPicker({ accent, locale, name }: { accent: string; locale:
         {/* A preview of what takes the colour, so the choice can be judged in place. */}
         <div aria-hidden="true" className={cx(panel, "mt-3 flex flex-col gap-3 p-3.5")}>
           <div className="flex items-center justify-between">
-            <span className="text-[14px] font-extrabold tracking-[0.1em]">fitr</span>
+            <span className="text-[14px] font-extrabold tracking-[0.12em]">FITR</span>
             <span className="flex items-center gap-1.5 rounded-full bg-paper py-0.5 pr-2.5 pl-0.5 text-xs font-bold">
               <span className="grid size-6 place-items-center rounded-full text-[11px] font-extrabold text-white" style={{ background: hex }}>
                 {name.slice(0, 1).toUpperCase()}
