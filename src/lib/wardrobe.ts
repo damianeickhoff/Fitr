@@ -4,7 +4,7 @@
  * something, so the few that do stand out. Pure, so it can be tested without
  * a database.
  */
-import { capitalise, monthName, shortDate, translator, type Translate } from "./i18n";
+import { INTL_TAG, capitalise, monthName, shortDate, translator, type Translate } from "./i18n";
 
 /** Per-device settings, read on the server so the first paint already matches. */
 export const FADE_COOKIE = "fitr_fade";
@@ -101,4 +101,86 @@ export function byLastWorn<T extends NoteInput>(items: T[]) {
     if (b.lastWornAt) return 1;
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
+}
+
+/**
+ * A wear belongs to a calendar day, kept as "2026-10-25" in the server's time
+ * zone: it compares and groups as a plain string, and a piece logged twice on
+ * one day is the same key.
+ */
+export function dayKey(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Midnight at the start of a day key, the value `lastWornAt` holds. */
+export function dayStart(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** A real "YYYY-MM-DD" that is not in the future: a wear can be logged late, never early. */
+export function isWearDay(key: string, now = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  return dayKey(dayStart(key)) === key && key <= dayKey(now);
+}
+
+type WearInput = { itemId: string; wornOn: string };
+
+/** Pieces worn today or in the days before, so the stylist doesn't serve them up again straight away. */
+export function recentlyWorn(wears: WearInput[], now = new Date(), days = 7) {
+  const from = dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)));
+  const to = dayKey(now);
+  return [...new Set(wears.filter((w) => w.wornOn >= from && w.wornOn <= to).map((w) => w.itemId))];
+}
+
+/** "2026-10" for the month a date falls in; the calendar's address. */
+export function monthKey(date: Date) {
+  return dayKey(date).slice(0, 7);
+}
+
+/** The month before or after, as a key. */
+export function shiftMonth(month: string, by: number) {
+  const [y, m] = month.split("-").map(Number);
+  return monthKey(new Date(y, m - 1 + by, 1));
+}
+
+export type CalendarDay<W> = { key: string; day: number; wears: W[] };
+
+/**
+ * One month as weeks starting on Monday, each a row of seven: a day of the
+ * month with its wears, or null for the blanks before the 1st and after the
+ * last day. Wears keep the order they came in.
+ */
+export function monthGrid<W extends WearInput>(month: string, wears: W[]): (CalendarDay<W> | null)[][] {
+  const [y, m] = month.split("-").map(Number);
+  const length = new Date(y, m, 0).getDate();
+  const lead = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const byDay = new Map<string, W[]>();
+  for (const w of wears) byDay.set(w.wornOn, [...(byDay.get(w.wornOn) ?? []), w]);
+
+  const cells: (CalendarDay<W> | null)[] = Array.from({ length: lead }, () => null);
+  for (let day = 1; day <= length; day++) {
+    const key = `${month}-${String(day).padStart(2, "0")}`;
+    cells.push({ key, day, wears: byDay.get(key) ?? [] });
+  }
+  while (cells.length % 7) cells.push(null);
+  return Array.from({ length: cells.length / 7 }, (_, n) => cells.slice(n * 7, n * 7 + 7));
+}
+
+/** A logged day as a pill says it: "Today", "Yesterday", "Tue 14 Oct", with the year once it is another year. */
+export function dayLabel(key: string, now = new Date(), t: Translate = english) {
+  if (key === dayKey(now)) return t("worn.dayToday");
+  if (key === dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) return t("worn.dayYesterday");
+  const date = dayStart(key);
+  return capitalise(
+    date
+      .toLocaleDateString(INTL_TAG[t.locale], {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+      })
+      .replace(/[,.]/g, ""),
+  );
 }

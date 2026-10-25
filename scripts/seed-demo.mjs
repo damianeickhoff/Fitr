@@ -22,10 +22,13 @@ const db = new Database(dbFile);
 
 const now = new Date();
 const daysAgo = (n) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000).toISOString();
+// Wears are calendar days in local time (src/lib/wardrobe.ts `dayKey`); lastWornAt is that day's midnight.
+const dayAgo = (n) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - n);
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // key, name, category, subcategory, colours, hex, styles, seasons, formality, worn, last worn (days ago), favourite, description
 const WARDROBE = [
-  ["tee", "White cotton tee", "top", "t-shirt", ["white"], "#f2f2f0", ["minimal", "casual"], ["spring", "summer"], 2, 9, 3, false,
+  ["tee", "White cotton tee", "top", "t-shirt", ["white"], "#f2f2f0", ["minimal", "casual"], ["spring", "summer"], 2, 9, 1, false,
     "A crisp crew-neck tee in soft cotton. Tuck it into jeans or wear it under a jacket."],
   ["knit", "Oatmeal chunky knit", "top", "jumper", ["oatmeal"], "#b9ac95", ["cosy", "minimal"], ["autumn", "winter"], 2, 4, 9, true,
     "Relaxed, boxy jumper in a soft wool blend with dropped shoulders. Tuck the front into high-waisted jeans."],
@@ -39,7 +42,7 @@ const WARDROBE = [
     "A clean, high-neck sleeveless top. Works tucked into tailoring or jeans."],
   ["boots", "Black zip ankle boots", "shoes", "ankle boots", ["black"], "#1b1b1b", ["classic", "edgy"], ["autumn", "winter"], 3, 7, 6, false,
     "Smooth leather ankle boots with side zips and a low block heel."],
-  ["trainers", "White leather trainers", "shoes", "trainers", ["white"], "#f4f4f4", ["casual", "minimal"], ["spring", "summer", "autumn"], 2, 10, 3, false,
+  ["trainers", "White leather trainers", "shoes", "trainers", ["white"], "#f4f4f4", ["casual", "minimal"], ["spring", "summer", "autumn"], 2, 10, 1, false,
     "Clean white leather trainers with perforated detailing."],
   ["tote", "Tan leather tote", "bag", "tote", ["tan"], "#a8683a", ["classic"], ["spring", "summer", "autumn", "winter"], 3, 5, 12, false,
     "A roomy tote in burnished tan leather. Big enough for a laptop."],
@@ -88,7 +91,7 @@ for (const [n, [key, name, category, sub, colors, hex, styles, seasons, formalit
   ids[key] = randomUUID();
   insert.run(
     ids[key], userId, profileId, name, category, sub, JSON.stringify(colors), hex, JSON.stringify(styles), JSON.stringify(seasons), formality,
-    description, imagePath, imagePath, cutoutPath, fave ? 1 : 0, worn, lastWorn === null ? null : daysAgo(lastWorn),
+    description, imagePath, imagePath, cutoutPath, fave ? 1 : 0, worn, lastWorn === null ? null : dayAgo(lastWorn).toISOString(),
     // The dress was bought recently; everything else has been around for a while.
     key === "dress" ? daysAgo(10) : daysAgo(250 - n),
   );
@@ -111,9 +114,25 @@ db.prepare(
 const link = db.prepare("INSERT INTO OutfitItem (outfitId, itemId, position) VALUES (?, ?, ?)");
 ["tee", "biker", "jeans", "trainers"].forEach((key, position) => link.run(outfitId, ids[key], position));
 
+// A wear history to match the counts: the saved look worn together yesterday,
+// the rest of each piece's wears spread back from its last day.
+const OUTFIT_DAY = 1;
+const insertWear = db.prepare("INSERT INTO Wear (id, profileId, itemId, outfitId, wornOn, createdAt) VALUES (?, ?, ?, ?, ?, ?)");
+let wearRows = 0;
+for (const [n, [key, , , , , , , , , worn, lastWorn]] of WARDROBE.entries()) {
+  if (lastWorn === null) continue;
+  const inOutfit = ["tee", "biker", "jeans", "trainers"].includes(key);
+  const days = new Set([lastWorn, ...(inOutfit ? [OUTFIT_DAY] : [])]);
+  for (let k = 1; days.size < worn; k++) days.add(lastWorn + k * (3 + (n % 4)));
+  for (const day of days) {
+    insertWear.run(randomUUID(), profileId, ids[key], inOutfit && day === OUTFIT_DAY ? outfitId : null, dayKey(dayAgo(day)), daysAgo(day));
+    wearRows++;
+  }
+}
+
 // A full-length photo to try outfits on with.
 db.prepare("INSERT INTO SelfPhoto (id, userId, profileId, path, createdAt) VALUES (?, ?, ?, ?, ?)").run(
   randomUUID(), userId, profileId, await store("me.jpg", "self"), daysAgo(30),
 );
 
-console.log(`Demo wardrobe ready: ${WARDROBE.length} pieces, 1 saved look and a photo to try it on. Sign in as ${DEMO_EMAIL}.`);
+console.log(`Demo wardrobe ready: ${WARDROBE.length} pieces, 1 saved look, ${wearRows} logged wears and a photo to try it on. Sign in as ${DEMO_EMAIL}.`);

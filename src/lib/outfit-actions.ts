@@ -12,7 +12,8 @@ import { profileLocale } from "./locale";
 import { ruleOutfits, styleOutfits, type DraftOutfit, type OutfitRequest } from "./outfits";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { tryOnPrompt } from "./try-on";
-import { inWash } from "./wardrobe";
+import { dayKey, inWash, recentlyWorn } from "./wardrobe";
+import { logWears } from "./wear";
 
 export type GenerateState = { error?: string; notice?: string } | undefined;
 
@@ -20,7 +21,16 @@ export async function generateOutfits(_: GenerateState, form: FormData): Promise
   const { user, profile } = await requireProfile();
   const locale = profileLocale(profile);
   const t = translator(locale);
-  const items = (await db.item.findMany({ where: { profileId: profile.id } })).filter((i) => !inWash(i) || i.id === form.get("anchor"));
+  const now = new Date();
+  const [loaded, wears] = await Promise.all([
+    db.item.findMany({ where: { profileId: profile.id } }),
+    db.wear.findMany({
+      where: { profileId: profile.id, wornOn: { gte: dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)) } },
+      select: { itemId: true, wornOn: true },
+    }),
+  ]);
+  // Laundry stays out of suggestions, unless it is the very piece asked for.
+  const items = loaded.filter((i) => !inWash(i, now) || i.id === form.get("anchor"));
 
   const hasBase =
     items.some((i) => i.category === "dress") ||
@@ -34,6 +44,7 @@ export async function generateOutfits(_: GenerateState, form: FormData): Promise
     anchorItemId: String(form.get("anchor") ?? "") || null,
     // From the never-worn overview: every look is built around a piece still waiting for its first outing.
     unwornFirst: form.get("focus") === "unworn",
+    recentIds: recentlyWorn(wears, now),
   };
 
   let drafts: DraftOutfit[];
@@ -53,7 +64,7 @@ export async function generateOutfits(_: GenerateState, form: FormData): Promise
 
   // A new round replaces the last round's suggestions the user didn't keep.
   // Stamps step back a millisecond each so newest-first keeps the stylist's order.
-  const now = Date.now();
+  const stamp = now.getTime();
   await db.$transaction([
     db.outfit.deleteMany({ where: { profileId: profile.id, saved: false } }),
     ...drafts.map((d, n) =>
@@ -61,7 +72,7 @@ export async function generateOutfits(_: GenerateState, form: FormData): Promise
         data: {
           userId: user.id,
           profileId: profile.id,
-          createdAt: new Date(now - n),
+          createdAt: new Date(stamp - n),
           name: d.name,
           occasion: request.occasion || null,
           reasoning: d.reasoning,
@@ -114,10 +125,11 @@ export async function addToOutfit(outfitId: string, itemId: string) {
 export async function woreOutfit(id: string) {
   const { profile } = await requireProfile();
   const outfit = await ownOutfit(profile.id, id);
-  await db.item.updateMany({
+  const pieces = await db.item.findMany({
     where: { id: { in: outfit.items.map((i) => i.itemId) }, profileId: profile.id },
-    data: { wearCount: { increment: 1 }, lastWornAt: new Date() },
+    select: { id: true },
   });
+  await logWears(profile.id, pieces.map((p) => p.id), dayKey(new Date()), id);
   if (!outfit.saved) await db.outfit.update({ where: { id }, data: { saved: true } });
   revalidatePath("/", "layout");
 }

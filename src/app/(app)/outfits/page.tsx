@@ -1,9 +1,9 @@
-import { Bookmark } from "lucide-react";
+import { Bookmark, CalendarDays } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FlatLay, toPiece } from "@/components/flat-lay";
 import { OutfitGenerator } from "@/components/outfit-generator";
-import { card, cx } from "@/components/ui";
+import { button, card, cx } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
@@ -77,6 +77,9 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
       <section className="mt-8">
         <h2 className="mb-3.5 text-lg font-extrabold">{t("outfits.saved")}</h2>
         {saved.length > 0 ? grid(saved) : <p className="text-sm font-semibold text-muted">{t("outfits.savedEmpty")}</p>}
+        <Link href="/worn" className={cx(button.secondary, "mt-4 w-full")}>
+          <CalendarDays size={16} strokeWidth={2.4} /> {t("calendar.whatYouWore")}
+        </Link>
       </section>
     </>
   );

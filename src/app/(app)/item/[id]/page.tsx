@@ -8,6 +8,7 @@ import { OriginalPhoto } from "@/components/original-photo";
 import { StudioPanel } from "@/components/studio-panel";
 import { StudioWatch } from "@/components/studio-watch";
 import { CATEGORY_TONE, button, cx, panel, pill, toneFor } from "@/components/ui";
+import { WornDays } from "@/components/worn-days";
 import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
@@ -17,7 +18,10 @@ import { imageAiEnabled } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
 import { studioPending } from "@/lib/studio";
-import { inWash, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
+import { dayKey, dayLabel, inWash, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
+
+/** The latest logged days on the item page; the rest are counted, the calendar has them all. */
+const WORN_DAYS_SHOWN = 6;
 
 async function load(id: string) {
   const { profile } = await requireProfile();
@@ -58,10 +62,14 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
   const goesWith = [...partners.values()].sort((a, b) => b.count - a.count).slice(0, 4);
 
   const now = new Date();
-  const all = await db.item.findMany({
-    where: { profileId: profile.id },
-    select: { id: true, wearCount: true, lastWornAt: true, createdAt: true },
-  });
+  const [all, wears] = await Promise.all([
+    db.item.findMany({
+      where: { profileId: profile.id },
+      select: { id: true, wearCount: true, lastWornAt: true, createdAt: true },
+    }),
+    db.wear.findMany({ where: { itemId: item.id }, orderBy: { wornOn: "desc" }, select: { wornOn: true } }),
+  ]);
+  const shownDays = wears.slice(0, WORN_DAYS_SHOWN).map((w) => ({ key: w.wornOn, label: dayLabel(w.wornOn, now, t) }));
   const note = wardrobeNotes(all, now, t).get(item.id);
   const worn = wornLabel(item, now, t);
   const pending = studioPending(item, now);
@@ -160,6 +168,8 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
             ))}
         </dl>
       )}
+
+      <WornDays id={item.id} days={shownDays} earlier={wears.length - shownDays.length} today={dayKey(now)} />
 
       {goesWith.length > 0 && (
         <section className="mt-7">

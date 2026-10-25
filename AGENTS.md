@@ -67,6 +67,12 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   throw; null means "show the plain weather chips". The forecast sentence is
   posted as the outfit request's weather, so keep its temperature first:
   `seasonFor` reads it for the rule-based fallback.
+- Wearing is a history: one `Wear` row per piece per day, `wornOn` a
+  "YYYY-MM-DD" day in the server's time zone (`dayKey` in `src/lib/wardrobe.ts`).
+  Log and remove wears only through `logWears`/`removeWear` (`src/lib/wear.ts`):
+  they keep `Item.wearCount` and `lastWornAt` (that day's midnight) in step,
+  which the cards still read. The count can exceed the rows, as wears from
+  before the history only left a number.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
 - Phone only, by design: every screen is laid out for the 440px column that
