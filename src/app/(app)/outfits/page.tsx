@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
 import { translator } from "@/lib/i18n";
 import { profileLocale } from "@/lib/locale";
+import { profileForecasts } from "@/lib/weather";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { profile } = await requireProfile();
@@ -17,9 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function OutfitsPage({ searchParams }: PageProps<"/outfits">) {
   const { profile } = await requireProfile();
-  const t = translator(profileLocale(profile));
-  const { anchor, focus } = await searchParams;
-  const [outfits, anchorItem, itemCount] = await Promise.all([
+  const locale = profileLocale(profile);
+  const t = translator(locale);
+  const { anchor, focus, day } = await searchParams;
+  const [outfits, anchorItem, itemCount, forecasts] = await Promise.all([
     db.outfit.findMany({
       where: { profileId: profile.id },
       orderBy: { createdAt: "desc" },
@@ -29,6 +31,7 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
       ? db.item.findFirst({ where: { id: anchor, profileId: profile.id }, select: { id: true, name: true, imagePath: true } })
       : null,
     db.item.count({ where: { profileId: profile.id } }),
+    profileForecasts(profile, locale),
   ]);
   const fresh = outfits.filter((o) => !o.saved);
   const saved = outfits.filter((o) => o.saved);
@@ -53,7 +56,15 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
       <p className="text-[13px] font-bold text-muted">{t("outfits.kicker")}</p>
       <h1 className="mt-1 text-[28px] leading-tight font-extrabold tracking-tight">{t("outfits.title")}</h1>
 
-      <OutfitGenerator anchor={anchorItem} unworn={focus === "unworn"} ai={aiEnabled()} disabled={itemCount < 2} />
+      <OutfitGenerator
+        anchor={anchorItem}
+        unworn={focus === "unworn"}
+        ai={aiEnabled()}
+        disabled={itemCount < 2}
+        forecasts={forecasts && { today: forecasts.today.sentence, tomorrow: forecasts.tomorrow.sentence }}
+        hasPlace={profile.latitude != null}
+        day={day === "tomorrow" ? "tomorrow" : undefined}
+      />
 
       {fresh.length > 0 && (
         <section className="mt-8">

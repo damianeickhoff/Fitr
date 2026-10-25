@@ -117,7 +117,19 @@ export function cleanOutfits(drafts: DraftOutfit[], items: Item[]): DraftOutfit[
 const NEUTRALS =
   /black|white|grey|gray|navy|beige|cream|camel|tan|brown|denim|ecru|stone|khaki|charcoal|zwart|wit|grijs|marine|crème|creme|bruin|steen|kaki|antraciet|zand/i;
 
-function seasonFor(weather: string) {
+/**
+ * Which season's pieces suit the weather. A forecast sentence ("Tomorrow: 9 to
+ * 14 °C, …") goes by its warmest figure, which is what the day is dressed for;
+ * the chip words and anything typed go by their words.
+ */
+export function seasonFor(weather: string) {
+  const temps = [...weather.matchAll(/(-?\d+)(?:\s*(?:to|tot)\s*(-?\d+))?\s*°C/gi)].flatMap((m) => [m[1], m[2]]);
+  const warmest = Math.max(...temps.filter(Boolean).map(Number));
+  if (Number.isFinite(warmest)) {
+    if (warmest < 10) return "winter";
+    if (warmest > 22) return "summer";
+    return null;
+  }
   if (/cold|freez|snow|winter/i.test(weather)) return "winter";
   if (/hot|warm|sun|summer/i.test(weather)) return "summer";
   return null;

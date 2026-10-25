@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
 import { LANGUAGE_NAMES, translator } from "@/lib/i18n";
 import { ImageProviderChoice } from "@/components/image-provider-choice";
+import { LocationSetting } from "@/components/location-setting";
 import { PROVIDER_NAME, configuredImageProviders, imageModelLabel, imageModelName, imageProvider } from "@/lib/image-gen";
 import { profileLocale } from "@/lib/locale";
 import { studioPending } from "@/lib/studio";
@@ -100,6 +101,7 @@ export default async function MePage() {
             </span>
             <ChevronRight size={18} strokeWidth={2.4} className="text-muted" />
           </Link>
+          <LocationSetting placeName={profile.placeName} />
         </div>
       </section>
 

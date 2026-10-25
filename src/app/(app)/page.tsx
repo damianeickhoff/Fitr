@@ -1,21 +1,23 @@
-import { ArrowRight, Camera, ChevronRight, Clock } from "lucide-react";
+import { ArrowRight, Camera, ChevronRight, Clock, CloudSun } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { StudioWatch } from "@/components/studio-watch";
 import { WardrobeGrid, type View } from "@/components/wardrobe-grid";
-import { button, cx, pill } from "@/components/ui";
+import { button, cx, panel, pill } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { categoryLabel, translator } from "@/lib/i18n";
 import { profileLocale } from "@/lib/locale";
 import { imageUrl } from "@/lib/storage-url";
 import { studioPending } from "@/lib/studio";
+import { forecast } from "@/lib/weather";
 import { FADE_COOKIE, VIEW_COOKIE, addedLabel, byLastWorn, isIdle, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 export default async function WardrobePage() {
   const { profile } = await requireProfile();
-  const t = translator(profileLocale(profile));
-  const [items, latest, jar] = await Promise.all([
+  const locale = profileLocale(profile);
+  const t = translator(locale);
+  const [items, latest, jar, tomorrow] = await Promise.all([
     db.item.findMany({ where: { profileId: profile.id }, orderBy: { createdAt: "desc" } }),
     db.outfit.findFirst({
       where: { profileId: profile.id },
@@ -23,6 +25,7 @@ export default async function WardrobePage() {
       include: { items: { include: { item: true }, orderBy: { position: "asc" } } },
     }),
     cookies(),
+    profile.latitude != null && profile.longitude != null ? forecast(profile.latitude, profile.longitude, "tomorrow", locale) : null,
   ]);
 
   if (items.length === 0) {
@@ -89,6 +92,20 @@ export default async function WardrobePage() {
       </Link>
     ) : null;
 
+  // A small second line under the nudge, so the forecast never pushes the never-worn pieces aside.
+  const weather = tomorrow && (
+    <Link href="/outfits?day=tomorrow" className={cx(panel, banner ? "mt-2.5" : "mt-4", "flex items-center gap-3 p-2.5 pr-3.5")}>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-paper text-ink ring-1 ring-line ring-inset">
+        <CloudSun size={18} strokeWidth={2.2} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-bold">{tomorrow.short}</span>
+        <span className="block truncate text-[12.5px] font-semibold text-muted">{t("weather.nudge")}</span>
+      </span>
+      <ChevronRight size={18} strokeWidth={2.4} className="shrink-0 text-muted" />
+    </Link>
+  );
+
   return (
     <>
       <WardrobeGrid
@@ -97,7 +114,14 @@ export default async function WardrobePage() {
         unworn={unworn.length}
         initialFade={jar.get(FADE_COOKIE)?.value !== "off"}
         initialView={view}
-        banner={banner}
+        banner={
+          (banner || weather) && (
+            <>
+              {banner}
+              {weather}
+            </>
+          )
+        }
       />
       {cards.some((c) => c.studioPending) && <StudioWatch />}
     </>
