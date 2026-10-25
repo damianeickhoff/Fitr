@@ -1,9 +1,9 @@
-import { Bookmark, CalendarDays } from "lucide-react";
+import { Bookmark, CalendarDays, ChevronRight, Luggage } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FlatLay, toPiece } from "@/components/flat-lay";
 import { OutfitGenerator } from "@/components/outfit-generator";
-import { button, card, cx } from "@/components/ui";
+import { button, card, cx, panel } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { aiEnabled } from "@/lib/gemini";
@@ -65,6 +65,17 @@ export default async function OutfitsPage({ searchParams }: PageProps<"/outfits"
         hasPlace={profile.latitude != null}
         day={day === "tomorrow" ? "tomorrow" : undefined}
       />
+
+      <Link href="/trips" className={cx(panel, "group mt-3 flex items-center gap-3 p-3 pr-4")}>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-paper text-ink ring-1 ring-line ring-inset">
+          <Luggage size={20} strokeWidth={2.2} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold group-hover:text-accent">{t("trips.link")}</span>
+          <span className="block truncate text-[12.5px] font-semibold text-muted">{t("trips.kicker")}</span>
+        </span>
+        <ChevronRight size={18} strokeWidth={2.4} className="text-muted" />
+      </Link>
 
       {fresh.length > 0 && (
         <section className="mt-8">
