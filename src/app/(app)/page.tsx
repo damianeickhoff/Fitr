@@ -12,7 +12,6 @@ import { imageUrl } from "@/lib/storage-url";
 import { studioPending } from "@/lib/studio";
 import { FADE_COOKIE, VIEW_COOKIE, addedLabel, byLastWorn, inWash, isIdle, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 import { forecast } from "@/lib/weather";
-import { FADE_COOKIE, VIEW_COOKIE, addedLabel, byLastWorn, isIdle, wardrobeNotes, wornLabel } from "@/lib/wardrobe";
 
 export default async function WardrobePage() {
   const { profile } = await requireProfile();
