@@ -8,7 +8,7 @@ import { addStudioFromApp } from "@/lib/item-actions";
 import { imageUrl } from "@/lib/storage-url";
 import { studioPrompt } from "@/lib/studio";
 import { useT } from "./locale";
-import { button, cx, panel, pill } from "./ui";
+import { button, cx, pill } from "./ui";
 
 const DOWNLOAD = "fitr-studio.jpg";
 
@@ -51,12 +51,11 @@ export function StudioPanel({ id, name, aiTagged, photoPath }: { id: string; nam
   }
 
   return (
-    <section className={cx(panel, "mt-5 p-4")}>
+    <section className="rounded-2xl bg-paper p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[15px] font-extrabold">{t("studio.title")}</h2>
+        <h3 className="text-sm font-bold">{t("tryon.withApp")}</h3>
         <span className={pill("green")}>{t("tryon.free")}</span>
       </div>
-      <p className="mt-1 text-[13px] font-bold text-muted">{t("tryon.withApp")}</p>
       <p className="mt-1.5 text-[13px] leading-relaxed font-semibold text-muted">{t("studio.appBody")}</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
