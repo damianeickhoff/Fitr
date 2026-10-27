@@ -92,8 +92,9 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*
 
-# `node` (uid 1000) exists in the base image; running as it means a compromise
-# inside the app cannot write to the image itself.
+# The app runs as `node` (uid 1000), so a compromise inside it cannot write to
+# the image itself. The entrypoint starts as root just long enough to hand
+# /data to node, since a host folder rarely arrives owned by 1000.
 RUN mkdir -p /data && chown -R node:node /data
 
 COPY --from=build --chown=node:node /app/public ./public
@@ -125,7 +126,6 @@ RUN chmod +x ./entrypoint.sh
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 
-USER node
 EXPOSE 3000
 VOLUME ["/data"]
 

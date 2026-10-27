@@ -3,8 +3,9 @@
 The image is the ordinary one built from the `Dockerfile` at the repo root;
 nothing here changes it. Two facts drive what follows:
 
-- **The container runs as uid 1000**, not Unraid's `nobody:users` (99:100), so
-  the appdata directory has to be chowned before the first start.
+- **The app runs as uid 1000**, not Unraid's `nobody:users` (99:100). The
+  container starts as root only to hand `/data` to that user on every start,
+  so no `chown` is needed, even after copying files in over SMB.
 - **Unraid pulls before it creates**, so the template's `Repository` must be
   something `docker pull` can resolve — a locally built `fitr:latest` is not.
 
@@ -70,19 +71,27 @@ cd /mnt/user/appdata/fitr-src && docker build -t localhost:5000/fitr:latest . &&
 
 Point `Repository` at `localhost:5000/fitr:latest`.
 
-## 2. Prepare the data directory
+## 2. The data directory
 
-**Before the first start.** If `/data` isn't writable the migrations fail on
-their first action and the container restart-loops with `EACCES`.
-
-```bash
-mkdir -p /mnt/user/appdata/fitr && chown -R 1000:1000 /mnt/user/appdata/fitr
-```
-
-It holds `fitr.db` (SQLite) and `uploads/` (every photo). SQLite over Unraid's
-`shfs` FUSE layer has a history of locking trouble, so keep the appdata share
+`/mnt/user/appdata/fitr` holds `fitr.db` (SQLite) and `uploads/` (every
+photo); Unraid creates it on the first start. SQLite over Unraid's `shfs` FUSE
+layer has a history of locking trouble, so keep the appdata share
 **cache-only with no mover pass** — or point the host path at
 `/mnt/cache/appdata/fitr` to bypass FUSE, and then never move it to the array.
+
+### Bringing over a wardrobe from another install
+
+Photo paths in the database are relative to the uploads folder, so moving an
+install is copying two things:
+
+1. Stop FITR on both sides (the source's dev server too), so the database
+   isn't copied mid-write.
+2. Copy the source's `data/fitr.db` and `data/uploads/` into
+   `/mnt/user/appdata/fitr/`, replacing what's there — over SMB
+   (`\\<server>\appdata\fitr`), or with `rsync`/`scp`.
+3. Start the container. It takes ownership of the copied files, applies any
+   migrations the source didn't have yet, and everyone signs in with their
+   old password. Sessions don't carry over unless `AUTH_SECRET` matches.
 
 ## 3. Install the template
 

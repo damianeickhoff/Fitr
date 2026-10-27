@@ -106,7 +106,8 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
 - Container: `Dockerfile` (Debian slim — onnxruntime-node has no musl build),
   migrations in `docker/entrypoint.sh`, published to GHCR by
   `.github/workflows/publish.yml`, Unraid template in `unraid/`. Keep
-  `docker/prisma.config.ts` in step with the root one. `/api/health` is
+  `docker/prisma.config.ts` in step with the root one. The entrypoint starts
+  as root to chown `/data`, then drops to `node` with `setpriv`. `/api/health` is
   outside the sign-in gate for the HEALTHCHECK; `APP_VERSION` is the build's
   commit (`src/lib/version.ts`). Env read with `??` must also treat an empty
   string as unset: Unraid passes blank template fields as `""`.

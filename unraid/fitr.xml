@@ -5,8 +5,8 @@
   Copy to /boot/config/plugins/dockerMan/templates-user/my-FITR.xml; it then
   appears under Docker -> Add Container -> Template -> User templates.
 
-  The container runs as uid 1000, not nobody:users: chown the appdata path to
-  1000:1000 before the first start (see unraid/README.md).
+  The app runs as uid 1000; the container hands the appdata path to it on
+  every start, so it needs no chown (see unraid/README.md).
 -->
 <Container version="2">
   <Name>FITR</Name>
@@ -33,7 +33,7 @@
 
   <Config Name="WebUI Port" Target="3000" Default="3320" Mode="tcp" Type="Port" Display="always" Required="true" Mask="false" Description="Host port for the web interface.">3320</Config>
 
-  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/fitr" Mode="rw" Type="Path" Display="always" Required="true" Mask="false" Description="Database and photos. MUST be owned by uid 1000 — run: mkdir -p /mnt/user/appdata/fitr &amp;&amp; chown -R 1000:1000 /mnt/user/appdata/fitr">/mnt/user/appdata/fitr</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/fitr" Mode="rw" Type="Path" Display="always" Required="true" Mask="false" Description="Database and photos. Keep it on the cache (cache-only share, or a /mnt/cache path): SQLite and the array's FUSE layer don't mix.">/mnt/user/appdata/fitr</Config>
 
   <Config Name="AUTH_SECRET" Target="AUTH_SECRET" Default="" Mode="" Type="Variable" Display="always" Required="true" Mask="true" Description="REQUIRED. Signs session cookies; changing it signs everyone out. Generate with: openssl rand -base64 48"/>
 
