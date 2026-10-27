@@ -93,6 +93,29 @@ install is copying two things:
    migrations the source didn't have yet, and everyone signs in with their
    old password. Sessions don't carry over unless `AUTH_SECRET` matches.
 
+### Shrinking cut-outs from an older install
+
+Cut-outs used to be stored as PNG and are now lossless WebP: the same pixels in
+a little over half the space (a 254-piece wardrobe went from 256 MB to 142 MB).
+New pieces are WebP already; the app shows old PNGs fine, so converting them is
+optional. The image ships the converter. With the container running:
+
+```bash
+docker exec -u node FITR node scripts/webp-cutouts.mjs
+```
+
+`-u node` makes the new files the app's own (Unraid's container console runs as
+root). Each cut-out is written as a new file and checked pixel for pixel
+against the PNG before the database moves to it, and only then is the PNG
+deleted. One that doesn't match exactly is left as PNG and listed. It prints
+the totals before and after. Running it again only picks up what's still PNG,
+so an interrupted run can simply be repeated. Photos and listings stay JPEG:
+re-encoding those would lose quality.
+
+Expect about half a second per cut-out, and take a backup first (section 5).
+When moving an install over, `npm run db:webp-cutouts` in the source
+checkout does the same before you copy.
+
 ## 3. Install the template
 
 Copy `fitr.xml` to the flash drive as

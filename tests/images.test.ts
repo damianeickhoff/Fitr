@@ -2,7 +2,16 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { LISTING_HEIGHT, LISTING_WIDTH, blurredListing, cropToBox, framedCutout, makeListing, normalisePhoto } from "@/lib/images";
+import {
+  CUTOUT_WEBP,
+  LISTING_HEIGHT,
+  LISTING_WIDTH,
+  blurredListing,
+  cropToBox,
+  framedCutout,
+  makeListing,
+  normalisePhoto,
+} from "@/lib/images";
 
 /** A grey photo with a red "garment" in its top-left quarter. */
 async function photo() {
@@ -38,7 +47,7 @@ describe("cropToBox", () => {
 describe("makeListing", () => {
   // Runs the real background-removal model in the same process as sharp. Two
   // copies of libvips in one process crash it, which is what this guards.
-  it("cuts a real photo out into a transparent PNG and a framed listing", async () => {
+  it("cuts a real photo out into a transparent WebP and a framed listing", async () => {
     const photo = await readFile(path.join(import.meta.dirname, "../scripts/demo-wardrobe/tote.jpg"));
     const { data, width, height } = await normalisePhoto(photo);
     const { listing, cutout } = await makeListing(data, width, height);
@@ -46,6 +55,21 @@ describe("makeListing", () => {
     expect((await sharp(cutout!).metadata()).hasAlpha).toBe(true);
     expect((await sharp(listing).metadata()).width).toBe(LISTING_WIDTH);
   }, 60_000);
+});
+
+describe("cut-out encoding", () => {
+  it("keeps every pixel, even the colour under full transparency", async () => {
+    // Random noise with random alpha, zero alpha included: the worst case for a lossless codec.
+    const width = 64;
+    const height = 48;
+    const noise = Buffer.alloc(width * height * 4);
+    for (let i = 0; i < noise.length; i++) noise[i] = (i * 2654435761) >>> 24;
+    for (let i = 3; i < noise.length; i += 32) noise[i] = 0;
+    const raw = { raw: { width, height, channels: 4 as const } };
+    const webp = await sharp(noise, raw).webp(CUTOUT_WEBP).toBuffer();
+    const { data } = await sharp(webp).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    expect(data.equals(noise)).toBe(true);
+  });
 });
 
 describe("listing frames", () => {

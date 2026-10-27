@@ -120,6 +120,11 @@ COPY --from=migrator --chown=node:node /opt/prisma/node_modules /opt/prisma/node
 COPY --chown=node:node docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
+# Converts an older install's PNG cut-outs to WebP, run with `docker exec` (see
+# unraid/README.md). It needs only sharp and better-sqlite3, which the server's
+# trace already brought along.
+COPY --chown=node:node scripts/webp-cutouts.mjs ./scripts/webp-cutouts.mjs
+
 # What this build is, for the app to report about itself (`src/lib/version.ts`).
 # Late on purpose: earlier, a new commit would invalidate the Next build cache
 # for a value the build never reads.

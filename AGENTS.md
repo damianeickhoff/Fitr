@@ -93,6 +93,13 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   existing piece; a re-cut, a studio photo or "Keep it" clears the flag.
 - Stored files are never rewritten in place; a change writes a new file, which
   is why the image route can cache forever.
+- Photos and listings are JPEG; cut-outs are lossless WebP (`CUTOUT_WEBP` in
+  `src/lib/images.ts`), about 60% of a PNG with the same pixels. Keep `exact`:
+  without it WebP rewrites the colour under transparent pixels. Never pass
+  `effort`/`quality`/`colours` to sharp's `.png()`: those turn on palette
+  quantisation, which is lossy. Older installs still hold PNG cut-outs until
+  `npm run db:webp-cutouts` (also in the image, see `unraid/README.md`)
+  converts them, so readers must accept both.
 - Phone only, by design: every screen is laid out for the 440px column that
   `PhoneStage` centres on wide screens. Don't add desktop breakpoints.
 - Home-screen app: `src/app/manifest.ts` (Android) and the root layout's

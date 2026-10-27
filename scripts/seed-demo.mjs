@@ -87,7 +87,7 @@ const insert = db.prepare(`INSERT INTO Item
 const ids = {};
 for (const [n, [key, name, category, sub, colors, hex, styles, seasons, formality, worn, lastWorn, fave, description]] of WARDROBE.entries()) {
   const imagePath = await store(`${key}.jpg`, "item");
-  const cutoutPath = await store(`${key}.png`, "cutout");
+  const cutoutPath = await store(`${key}.webp`, "cutout");
   ids[key] = randomUUID();
   insert.run(
     ids[key], userId, profileId, name, category, sub, JSON.stringify(colors), hex, JSON.stringify(styles), JSON.stringify(seasons), formality,

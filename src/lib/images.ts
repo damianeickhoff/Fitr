@@ -60,6 +60,16 @@ export async function blurredListing(crop: Buffer) {
  * Everything a new piece needs from its photo: the shop listing and, when the
  * background could be removed, the transparent cut-out for flat lays.
  */
+/**
+ * Cut-outs are stored as lossless WebP: about 60% of the PNG, the same pixels.
+ * `exact` keeps the colour under fully transparent pixels, which WebP would
+ * otherwise rewrite: invisible, but no longer identical. Effort 6 costs a
+ * fifth of a second, nothing beside the background removal before it.
+ * `scripts/webp-cutouts.mjs` converts older PNG cut-outs with these settings.
+ */
+export const CUTOUT_EXT = "webp";
+export const CUTOUT_WEBP = { lossless: true, exact: true, effort: 6 } as const;
+
 export type Listing = {
   listing: Buffer;
   cutout: Buffer | null;
@@ -77,7 +87,7 @@ export async function makeListing(photo: Buffer, width: number, height: number, 
     const cutout = await sharp(removed)
       .trim({ threshold: 10 })
       .resize(900, 900, { fit: "inside", withoutEnlargement: true })
-      .png()
+      .webp(CUTOUT_WEBP)
       .toBuffer();
     // An empty cut-out means the model found no subject; the plain crop is better.
     const { width: cw = 0, height: ch = 0 } = await sharp(cutout).metadata();

@@ -16,6 +16,7 @@
     "postinstall": "prisma generate",
     "db:seed-demo": "node scripts/seed-demo.mjs",
     "db:reframe": "node scripts/reframe-listings.mts",
+    "db:webp-cutouts": "node scripts/webp-cutouts.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {

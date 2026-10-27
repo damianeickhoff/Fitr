@@ -10,7 +10,7 @@ import { CATEGORY_KEYS, SEASONS, parseList } from "./garment";
 import { aiEnabled, describeAiError } from "./gemini";
 import { translator, type Locale, type MessageKey } from "./i18n";
 import { describeImageError, imageAiEnabled } from "./image-gen";
-import { makeListing, normalisePhoto, smallCopy, type Box, type Listing } from "./images";
+import { CUTOUT_EXT, makeListing, normalisePhoto, smallCopy, type Box, type Listing } from "./images";
 import { profileLocale } from "./locale";
 import { checkListing, isQualityIssue, worstFinding, type QualityIssue } from "./photo-quality";
 import { deleteStored, readStored, saveFile } from "./storage";
@@ -84,7 +84,7 @@ async function savePiece(
   const made = await makeListing(photo.data, photo.width, photo.height, detected?.box as Box | undefined);
   return {
     imagePath: await saveFile(userId, made.listing, "item"),
-    cutoutPath: made.cutout ? await saveFile(userId, made.cutout, "cutout", "png") : null,
+    cutoutPath: made.cutout ? await saveFile(userId, made.cutout, "cutout", CUTOUT_EXT) : null,
     ...(await assessQuality(made, detected?.quality, locale)),
   };
 }
@@ -407,7 +407,7 @@ export async function recutItem(id: string): Promise<{ error?: string }> {
     const box = (await findPiece(photo.data, item.category, profileLocale(profile)))?.box as Box | undefined;
     const { listing, cutout } = await makeListing(photo.data, photo.width, photo.height, box);
     const imagePath = await saveFile(user.id, listing, "item");
-    const cutoutPath = cutout ? await saveFile(user.id, cutout, "cutout", "png") : null;
+    const cutoutPath = cutout ? await saveFile(user.id, cutout, "cutout", CUTOUT_EXT) : null;
     // The owner asked for this cut: whatever was flagged, they have now dealt with it.
     await db.item.update({
       where: { id },

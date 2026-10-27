@@ -1,6 +1,14 @@
 import { getCurrentUser } from "@/lib/auth";
 import { readStored } from "@/lib/storage";
 
+// Cut-outs need transparency: WebP now, PNG on installs that haven't run
+// `scripts/webp-cutouts.mjs`. Everything else is JPEG.
+function contentType(relative: string) {
+  if (relative.endsWith(".webp")) return "image/webp";
+  if (relative.endsWith(".png")) return "image/png";
+  return "image/jpeg";
+}
+
 /**
  * Serves stored photos to their owner only: every path starts with the user's
  * id, so a session for anyone else gets a 404. Files are never rewritten in
@@ -16,8 +24,7 @@ export async function GET(_: Request, { params }: RouteContext<"/api/images/[...
     const data = await readStored(relative);
     return new Response(new Uint8Array(data), {
       headers: {
-        // Cut-outs are PNG for their transparency; everything else is JPEG.
-        "Content-Type": relative.endsWith(".png") ? "image/png" : "image/jpeg",
+        "Content-Type": contentType(relative),
         "Cache-Control": "private, max-age=31536000, immutable",
       },
     });

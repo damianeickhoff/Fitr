@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { describeImageError, generateImage, imageAiEnabled } from "./image-gen";
-import { makeListing, toJpeg } from "./images";
+import { CUTOUT_EXT, makeListing, toJpeg } from "./images";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { studioPrompt } from "./studio";
 
@@ -28,7 +28,7 @@ export function studioOnUpload() {
 export async function swapInStudio(item: StudioSource, picture: Buffer, width = 0, height = 0) {
   const { listing, cutout } = await makeListing(picture, width, height);
   const imagePath = await saveFile(item.userId, listing, "studio");
-  const cutoutPath = cutout ? await saveFile(item.userId, cutout, "cutout", "png") : null;
+  const cutoutPath = cutout ? await saveFile(item.userId, cutout, "cutout", CUTOUT_EXT) : null;
   const { count } = await db.item.updateMany({
     where: { id: item.id, imagePath: item.imagePath },
     // A studio photo replaces whatever the checks disliked about the cut-out.
