@@ -318,7 +318,14 @@ export function ItemSheet({
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() => act(t("actions.studioWorking"), t("actions.studioReady"), () => makeStudioPhoto(item.id))}
+                      onClick={() =>
+                        start(async () => {
+                          // Queued, not waited for: the page shows it coming and swaps it in when ready.
+                          const result = await makeStudioPhoto(item.id);
+                          if (result.error) setStatus({ text: result.error, error: true });
+                          else close();
+                        })
+                      }
                       className={cx(button.primary, "mt-3 w-full")}
                     >
                       <Wand2 size={16} /> {t("studio.make")}

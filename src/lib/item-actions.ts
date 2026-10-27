@@ -9,13 +9,13 @@ import { db } from "./db";
 import { CATEGORY_KEYS, SEASONS, parseList } from "./garment";
 import { aiEnabled, describeAiError } from "./gemini";
 import { translator, type Locale, type MessageKey } from "./i18n";
-import { describeImageError, imageAiEnabled } from "./image-gen";
+import { imageAiEnabled } from "./image-gen";
 import { makeListing, normalisePhoto, smallCopy, type Box, type Listing } from "./images";
 import { profileLocale } from "./locale";
 import { checkListing, isQualityIssue, worstFinding, type QualityIssue } from "./photo-quality";
 import { deleteStored, readStored, saveFile } from "./storage";
 import { studioPending } from "./studio";
-import { queueStudio, shootStudio, studioOnUpload, swapInStudio } from "./studio-queue";
+import { queueStudio, studioOnUpload, swapInStudio } from "./studio-queue";
 import { suggestionValues, type DetailValues } from "./suggest";
 import { describeItem, detectItems, judgeListing, type PhotoQuality } from "./vision";
 import { dayKey, isWearDay } from "./wardrobe";
@@ -425,18 +425,17 @@ export async function recutItem(id: string): Promise<{ error?: string }> {
 /**
  * Re-shoots the listing as a clean product photo with an image model. Paid with
  * every provider, so it is only offered when one is set up (see image-gen.ts).
+ * It joins the studio queue and answers at once: a server action still
+ * running holds up every navigation, and a picture takes up to a minute.
  */
 export async function makeStudioPhoto(id: string): Promise<{ error?: string }> {
   const { profile } = await requireProfile();
-  const item = await ownItem(profile.id, id);
+  await ownItem(profile.id, id);
   if (!imageAiEnabled()) return { error: translator(profileLocale(profile))("err.studioKey") };
-  try {
-    await shootStudio(item, profile.imageProvider);
-    revalidatePath("/", "layout");
-    return {};
-  } catch (error) {
-    return { error: describeImageError(error) };
-  }
+  const { finished } = await queueStudio(profile.id, [id]);
+  after(() => finished);
+  revalidatePath("/", "layout");
+  return {};
 }
 
 /**

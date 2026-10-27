@@ -2,10 +2,12 @@
 
 import { LayoutGrid, List } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { CATEGORY_KEYS } from "@/lib/garment";
 import { categoryLabel } from "@/lib/i18n";
 import { FADE_COOKIE, VIEW_COOKIE } from "@/lib/wardrobe";
+import { useScrollMemory } from "./history";
 import { ItemCard, ItemRow, type CardItem } from "./item-card";
 import { useT } from "./locale";
 import { chip, cx } from "./ui";
@@ -19,7 +21,9 @@ function remember(name: string, value: string) {
 /**
  * The wardrobe itself: title, view switch, category chips and the pieces as
  * cards or rows. Filters and switches work on the client, since they only
- * rearrange what is already on the page; each choice is remembered per device.
+ * rearrange what is already on the page. The view and fade are remembered
+ * per device; the filter lives in the address, so coming back from a piece
+ * finds it still set.
  * `banner` is whatever the server wants shown between the title and the
  * filters: the never-worn nudge, or today's look.
  */
@@ -39,7 +43,7 @@ export function WardrobeGrid({
   banner?: React.ReactNode;
 }) {
   const t = useT();
-  const [tab, setTab] = useState<string>("all");
+  const asked = useSearchParams().get("show") ?? "all";
   const [fade, setFade] = useState(initialFade);
   const [view, setView] = useState<View>(initialView);
 
@@ -59,6 +63,11 @@ export function WardrobeGrid({
     ...(items.some((i) => i.wash) ? [{ key: "wash", label: t("wash.in") }] : []),
     ...CATEGORY_KEYS.filter((k) => items.some((i) => i.category === k)).map((k) => ({ key: k, label: categoryLabel(t, k, "other") })),
   ];
+  // A filter that has emptied since (the last favourite unmarked) falls back to all.
+  const tab = tabs.some((tb) => tb.key === asked) ? asked : "all";
+  // Replaced, not pushed: back from the wardrobe should leave it, not step through filters.
+  const setTab = (key: string) => window.history.replaceState(null, "", key === "all" ? "/" : `/?show=${key}`);
+  useScrollMemory();
   const shown = items.filter((i) => tab === "all" || (tab === "fav" ? i.favourite : tab === "wash" ? i.wash : i.category === tab));
   const rows = view === "list" ? [...shown].sort((a, b) => a.wornRank - b.wornRank) : shown;
   const needsDetails = t("note.needsDetails");

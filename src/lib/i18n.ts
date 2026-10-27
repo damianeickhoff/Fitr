@@ -160,7 +160,6 @@ const en = {
   "never.empty": "Everything you own has been worn at least once.",
   "never.emptyCta": "Back to the wardrobe",
 
-  "item.back": "Back to wardrobe",
   "item.more": "More: photo, details and wear history",
   "item.menuHint": "Photo, details and wear history",
   "item.untagged": "This piece hasn't been tagged yet",
@@ -183,8 +182,6 @@ const en = {
   "item.fact.dressCode": "Dress code",
   "item.fact.brand": "Brand",
 
-  "actions.studioWorking": "Re-shooting as a studio photo…",
-  "actions.studioReady": "Studio photo ready.",
   "actions.recut": "Re-cut from photo",
   "actions.recutWorking": "Cutting it out again…",
   "actions.recutReady": "Cut out again from the original photo.",
@@ -743,7 +740,6 @@ const nl: Record<MessageKey, string> = {
   "never.empty": "Alles wat je hebt is minstens één keer gedragen.",
   "never.emptyCta": "Terug naar de garderobe",
 
-  "item.back": "Terug naar garderobe",
   "item.more": "Meer: foto, details en draaggeschiedenis",
   "item.menuHint": "Foto, details en draaggeschiedenis",
   "item.untagged": "Dit stuk heeft nog geen details",
@@ -766,8 +762,6 @@ const nl: Record<MessageKey, string> = {
   "item.fact.dressCode": "Dresscode",
   "item.fact.brand": "Merk",
 
-  "actions.studioWorking": "Opnieuw schieten als studiofoto…",
-  "actions.studioReady": "Studiofoto klaar.",
   "actions.recut": "Opnieuw uitknippen",
   "actions.recutWorking": "Opnieuw uitknippen…",
   "actions.recutReady": "Opnieuw uitgeknipt uit de originele foto.",

@@ -2,6 +2,7 @@ import { ArrowLeft, ChevronRight, Clock, Ellipsis, Loader2, Pencil, TriangleAler
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BackLink } from "@/components/history";
 import { ItemQuickActions } from "@/components/item-quick-actions";
 import { ItemSheet, SheetButton } from "@/components/item-sheet";
 import { StudioWatch } from "@/components/studio-watch";
@@ -107,13 +108,12 @@ export default async function ItemPage({ params }: PageProps<"/item/[id]">) {
       <div className="relative -mx-5 -mt-2 overflow-hidden rounded-b-[30px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- private listing image */}
         <img src={imageUrl(item.imagePath)} alt={item.name} className="block aspect-[4/5] w-full bg-[#efe8db] object-cover" />
-        <Link
-          href="/"
-          aria-label={t("item.back")}
+        <BackLink
+          label={t("common.back")}
           className="absolute top-3.5 left-3.5 grid size-10 place-items-center rounded-full bg-ground/90 text-ink backdrop-blur-md"
         >
           <ArrowLeft size={20} strokeWidth={2.4} />
-        </Link>
+        </BackLink>
         <SheetButton
           view="menu"
           label={t("item.more")}

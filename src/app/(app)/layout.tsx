@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { HistoryMark } from "@/components/history";
 import { InstallHint } from "@/components/install-hint";
 import { LocaleProvider } from "@/components/locale";
 import { Nav } from "@/components/nav";
@@ -35,6 +36,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <InstallHint />
       <main className="px-5 pt-2 pb-32">{children}</main>
       <Nav />
+      <HistoryMark />
     </LocaleProvider>
   );
 }
