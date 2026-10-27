@@ -8,7 +8,10 @@ import { toggleWash } from "@/lib/wash-actions";
 import { useT } from "./locale";
 import { TONES, cx } from "./ui";
 
-const disc = "grid size-14 place-items-center rounded-full bg-ground ring-1 ring-line ring-inset transition";
+// The resting look is its own class, never a base the active colour sits on:
+// Tailwind settles two backgrounds by stylesheet order, and bg-ground won.
+const disc = "grid size-14 place-items-center rounded-full transition";
+const resting = "bg-ground ring-1 ring-line ring-inset";
 const label = "flex flex-col items-center gap-1.5 text-center text-[12.5px] leading-tight font-bold disabled:opacity-60";
 
 /**
@@ -37,7 +40,7 @@ export function ItemQuickActions({
   return (
     <div className="mt-[18px] grid grid-cols-4 gap-1">
       <Link href={`/outfits?anchor=${id}`} className={label}>
-        <span className={cx(disc, "bg-accent text-white ring-0")}>
+        <span className={cx(disc, "bg-accent text-white")}>
           <Sparkles size={22} />
         </span>
         {t("item.styleIt")}
@@ -55,7 +58,7 @@ export function ItemQuickActions({
         }
         className={label}
       >
-        <span className={cx(disc, wore && [TONES.green, "ring-transparent"])}>
+        <span className={cx(disc, wore ? TONES.green : resting)}>
           <Shirt size={22} />
         </span>
         {wore ? t("item.woreDone") : t("item.wore")}
@@ -72,7 +75,7 @@ export function ItemQuickActions({
         }
         className={label}
       >
-        <span className={cx(disc, wash && [TONES.teal, "ring-transparent"])}>
+        <span className={cx(disc, wash ? TONES.teal : resting)}>
           <Droplets size={22} />
         </span>
         {t("wash.in")}
@@ -89,8 +92,8 @@ export function ItemQuickActions({
         }
         className={label}
       >
-        <span className={cx(disc, fav && "bg-[#f3dcd6] ring-transparent")}>
-          <Heart size={22} className={cx(fav && "fill-[#c9365f] text-[#c9365f]")} />
+        <span className={cx(disc, fav ? "bg-[#f3dcd6] text-[#c9365f]" : resting)}>
+          <Heart size={22} className={cx(fav && "fill-current")} />
         </span>
         {t("common.favourite")}
       </button>
