@@ -82,3 +82,15 @@ account in `scripts/seed-demo.mjs`.
 
 Photos are stored under `data/uploads` (or `UPLOADS_DIR`), the database at
 `data/fitr.db`. Back up `data/` and you've backed up everything.
+
+## Docker and Unraid
+
+Every push builds an image to `ghcr.io/damianeickhoff/fitr` (tagged `latest`
+from `main`). It keeps everything in `/data` and needs only `AUTH_SECRET`:
+
+```bash
+docker run -d -p 3000:3000 -v fitr-data:/data -e AUTH_SECRET="$(openssl rand -base64 48)" ghcr.io/damianeickhoff/fitr:latest
+```
+
+Migrations run on start. For Unraid there is a template and a walkthrough in
+[`unraid/`](unraid/README.md).

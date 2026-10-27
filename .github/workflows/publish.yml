@@ -1,0 +1,78 @@
+# Builds the image and pushes it to GHCR, which the Unraid template pulls.
+# No secrets to configure: `GITHUB_TOKEN` can write to this repository's own
+# packages, which `packages: write` grants.
+
+name: Publish the image
+
+on:
+  push:
+    # Every branch: a branch build is tagged with its name and never `latest`,
+    # so a change can be tried on the box before it is merged.
+    branches: ["**"]
+    tags: ["v*"]
+    # Nothing under these reaches the image, and a build takes minutes.
+    paths-ignore:
+      - "**.md"
+      - "unraid/**"
+  workflow_dispatch:
+
+# A newer push makes the build in flight pointless; a release build should finish.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Lowercased for us: GHCR rejects capitals and the repository has one.
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # What the app reports as its version, shortened to match `sha-<short>`.
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+          # A plain Docker manifest, or Unraid never sees an update. Provenance
+          # turns the push into an index with an attestation, and GHCR refuses
+          # to serve an OCI manifest to a client asking for a Docker one — a 404,
+          # not a fallback — which is exactly how Unraid asks:
+          #
+          #   curl -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
+          #     https://ghcr.io/v2/<owner>/fitr/manifests/latest
+          #
+          # `type=registry` already pushes; adding `push: true` would conflict.
+          outputs: type=registry,oci-mediatypes=false
+          provenance: false
+          sbom: false
+          # Unraid is x86, and the Dockerfile strips every other platform's
+          # sharp and onnxruntime binaries on that assumption.
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -18,6 +18,7 @@ import { PROVIDER_NAME, configuredImageProviders, imageModelLabel, imageModelNam
 import { profileLocale } from "@/lib/locale";
 import { studioPending } from "@/lib/studio";
 import { studioProgress } from "@/lib/studio-queue";
+import { buildVersion } from "@/lib/version";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { profile } = await requireProfile();
@@ -148,7 +149,9 @@ export default async function MePage() {
         </form>
         {profiles.length > 1 && <DeleteProfile />}
       </div>
-      <p className="mt-3 text-xs font-semibold text-muted">{user.email}</p>
+      <p className="mt-3 text-xs font-semibold text-muted">
+        {user.email} · FITR {buildVersion()}
+      </p>
     </>
   );
 }

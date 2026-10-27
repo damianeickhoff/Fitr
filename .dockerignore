@@ -1,0 +1,34 @@
+# The two that matter are the data and the env file: a dev database or photos
+# baked into the image ship someone's wardrobe to whoever pulls it, and .env
+# ships the keys with it.
+data
+*.db
+*.db-journal
+.env
+.env.*
+!.env.example
+
+node_modules
+.next
+out
+build
+src/generated
+coverage
+*.tsbuildinfo
+next-env.d.ts
+
+.git
+.gitignore
+.github
+.claude
+.vscode
+.idea
+unraid
+tests
+
+npm-debug.log*
+.DS_Store
+
+Dockerfile
+.dockerignore
+README.md

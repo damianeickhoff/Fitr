@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<!--
+  Unraid Docker template for FITR.
+
+  Copy to /boot/config/plugins/dockerMan/templates-user/my-FITR.xml; it then
+  appears under Docker -> Add Container -> Template -> User templates.
+
+  The container runs as uid 1000, not nobody:users: chown the appdata path to
+  1000:1000 before the first start (see unraid/README.md).
+-->
+<Container version="2">
+  <Name>FITR</Name>
+  <Repository>ghcr.io/damianeickhoff/fitr:latest</Repository>
+  <Registry>https://github.com/damianeickhoff/Fitr/pkgs/container/fitr</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/damianeickhoff/Fitr/issues</Support>
+  <Project>https://github.com/damianeickhoff/Fitr</Project>
+  <Overview>
+    Your wardrobe, shopped like a store. Photograph your clothes and FITR turns each piece
+    into a shop-style listing, puts outfits together and suggests what to add or buy.
+    Stores its database and photos in /data. A free Gemini key adds tagging and the stylist;
+    an OpenAI or billed Gemini image key adds studio photos and try-on.
+  </Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/damianeickhoff/Fitr/main/public/icons/icon-512.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <DateInstalled/>
+
+  <Config Name="WebUI Port" Target="3000" Default="3320" Mode="tcp" Type="Port" Display="always" Required="true" Mask="false" Description="Host port for the web interface.">3320</Config>
+
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/fitr" Mode="rw" Type="Path" Display="always" Required="true" Mask="false" Description="Database and photos. MUST be owned by uid 1000 — run: mkdir -p /mnt/user/appdata/fitr &amp;&amp; chown -R 1000:1000 /mnt/user/appdata/fitr">/mnt/user/appdata/fitr</Config>
+
+  <Config Name="AUTH_SECRET" Target="AUTH_SECRET" Default="" Mode="" Type="Variable" Display="always" Required="true" Mask="true" Description="REQUIRED. Signs session cookies; changing it signs everyone out. Generate with: openssl rand -base64 48"/>
+
+  <Config Name="GEMINI_API_KEY" Target="GEMINI_API_KEY" Default="" Mode="" Type="Variable" Display="always" Required="false" Mask="true" Description="Free key from https://aistudio.google.com/apikey for tagging photos, outfits and shop tips. Without it photos save untagged and outfits use colour rules."/>
+
+  <Config Name="OPENAI_API_KEY" Target="OPENAI_API_KEY" Default="" Mode="" Type="Variable" Display="always" Required="false" Mask="true" Description="Optional, paid: studio photos and try-on with ChatGPT's image model. Key from https://platform.openai.com/api-keys with API credit."/>
+
+  <Config Name="GEMINI_MODEL" Target="GEMINI_MODEL" Default="" Mode="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="Text and vision model. Empty uses the built-in free-tier default."/>
+
+  <Config Name="OPENAI_IMAGE_MODEL" Target="OPENAI_IMAGE_MODEL" Default="" Mode="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="OpenAI image model. Empty uses the built-in default."/>
+
+  <Config Name="OPENAI_IMAGE_QUALITY" Target="OPENAI_IMAGE_QUALITY" Default="medium" Mode="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="low, medium or high: higher looks better and costs more per image.">medium</Config>
+
+  <Config Name="GEMINI_IMAGE_MODEL" Target="GEMINI_IMAGE_MODEL" Default="" Mode="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="Gemini image model instead of OpenAI's; needs a billed Gemini key. Empty turns Gemini images off."/>
+
+  <Config Name="IMAGE_PROVIDER" Target="IMAGE_PROVIDER" Default="" Mode="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="With both image providers set up: openai or gemini, the default until a profile picks its own on the Me page."/>
+
+  <Config Name="STUDIO_ON_UPLOAD" Target="STUDIO_ON_UPLOAD" Default="" Mode="" Type="Variable" Display="advanced" Required="false" Mask="false" Description="With an image key every new piece is re-shot as a studio photo (one paid image each). Set to off to keep plain cut-outs."/>
+</Container>

@@ -103,6 +103,13 @@ Router, React 19, Server Actions), Tailwind v4, SQLite via Prisma 7
   never other HTML or server actions. Bump its `VERSION` when changing it.
   `/offline`, `/sw.js` and the icons stay outside the sign-in gate in
   `src/proxy.ts`. `InstallHint` shows on the wardrobe page only.
+- Container: `Dockerfile` (Debian slim — onnxruntime-node has no musl build),
+  migrations in `docker/entrypoint.sh`, published to GHCR by
+  `.github/workflows/publish.yml`, Unraid template in `unraid/`. Keep
+  `docker/prisma.config.ts` in step with the root one. `/api/health` is
+  outside the sign-in gate for the HEALTHCHECK; `APP_VERSION` is the build's
+  commit (`src/lib/version.ts`). Env read with `??` must also treat an empty
+  string as unset: Unraid passes blank template fields as `""`.
 - Testing a production build on `localhost` while other worktrees' servers
   run: they share the session cookie across ports, so use `127.0.0.1`.
 - Warm paper look: cream page, near-white `panel`/`card` surfaces edged with a

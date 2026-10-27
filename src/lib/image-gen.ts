@@ -70,7 +70,7 @@ async function openaiImage(prompt: string, images: ImageInput[]): Promise<Buffer
     // Portrait, like the listings and a full-length photo of a person.
     size: "1024x1536",
     // Cost scales with quality; medium is plenty for a phone screen.
-    quality: (process.env.OPENAI_IMAGE_QUALITY as "low" | "medium" | "high" | undefined) ?? "medium",
+    quality: (process.env.OPENAI_IMAGE_QUALITY as "low" | "medium" | "high" | undefined) || "medium",
     output_format: "jpeg",
   });
   const b64 = response.data?.[0]?.b64_json;

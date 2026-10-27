@@ -21,7 +21,12 @@ const nextConfig: NextConfig = {
   // time, never bundled.
   serverExternalPackages: ["@imgly/background-removal-node", "onnxruntime-node"],
   outputFileTracingIncludes: {
-    "/**": ["./node_modules/@imgly/background-removal-node/dist/**/*"],
+    "/**": [
+      "./node_modules/@imgly/background-removal-node/dist/**/*",
+      // The tracer finds the binding but not the shared libraries it loads
+      // from beside it, so a standalone server fails its first cut-out.
+      "./node_modules/onnxruntime-node/bin/napi-v3/**/*",
+    ],
   },
   turbopack: {
     rules: {

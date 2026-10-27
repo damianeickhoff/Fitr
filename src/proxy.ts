@@ -16,10 +16,11 @@ export async function proxy(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
-// The offline page, the service worker and the icons load signed out too: the
-// worker installs from the sign-in page, and a redirect would break it.
+// The offline page, the service worker, the icons and the health check load
+// signed out too: Docker cannot hold a session, and the worker installs
+// from the sign-in page, where a redirect would break it.
 export const config = {
   matcher: [
-    "/((?!login|offline|sw\.js|_next/static|_next/image|manifest\.webmanifest|icon|apple-icon|apple-touch-icon|favicon\.ico).*)",
+    "/((?!login|offline|api/health|sw\.js|_next/static|_next/image|manifest\.webmanifest|icon|apple-icon|apple-touch-icon|favicon\.ico).*)",
   ],
 };
