@@ -62,6 +62,26 @@ RUN rm -rf \
       node_modules/react-dom
 
 
+# --- native packages ---------------------------------------------------------
+# The heavy, rarely changing part of the runtime: the background-removal model
+# (~128MB), onnxruntime and libvips. Taken from `deps`, which only reruns when
+# the lockfile changes, so their layer keeps its digest across commits and an
+# update doesn't download it again. Inside the app's own layer they came along
+# with every change to a component.
+#
+# Linux x64 only: the other platforms' binaries are pruned here, which is why
+# the publish workflow builds linux/amd64 alone.
+FROM deps AS natives
+RUN mkdir -p /natives/@imgly \
+  && cp -a node_modules/@imgly/background-removal-node /natives/@imgly/ \
+  && rm -rf /natives/@imgly/background-removal-node/node_modules/@types \
+  && cp -a node_modules/onnxruntime-node node_modules/onnxruntime-common node_modules/@img /natives/ \
+  && rm -rf /natives/onnxruntime-node/bin/napi-v3/darwin \
+            /natives/onnxruntime-node/bin/napi-v3/win32 \
+            /natives/onnxruntime-node/bin/napi-v3/linux/arm64 \
+            /natives/onnxruntime-node/script
+
+
 # --- build -------------------------------------------------------------------
 FROM base AS build
 
@@ -74,6 +94,14 @@ ENV NODE_ENV=production
 
 # `next build` directly: the `prebuild` script would generate the client again.
 RUN npx next build
+
+# Split the traced output into layers by how often they change. The packages
+# `natives` supplies come out, and the rest of the traced dependencies get a
+# layer of their own: they only change when an import does, while the server
+# code changes with every commit.
+RUN cd .next/standalone/node_modules \
+  && rm -rf @imgly onnxruntime-node onnxruntime-common @img \
+  && mv /app/.next/standalone/node_modules /app/traced-modules
 
 
 # --- runtime -----------------------------------------------------------------
@@ -97,28 +125,24 @@ RUN apt-get update \
 # /data to node, since a host folder rarely arrives owned by 1000.
 RUN mkdir -p /data && chown -R node:node /data
 
+# From here on, least-often-changed first. Docker reuses a layer only while
+# every layer under it is unchanged, so one early layer that changes with each
+# commit makes an update download everything above it again.
+
+# Migrations run at startup. The CLI lives outside /app so its `node_modules`
+# cannot shadow the traced ones the server resolves. Changes with its version.
+COPY --from=migrator --chown=node:node /opt/prisma/node_modules /opt/prisma/node_modules
+# Changes with the lockfile.
+COPY --from=natives --chown=node:node /natives ./node_modules
+# Changes when an import does.
+COPY --from=build --chown=node:node /app/traced-modules ./node_modules
+# Changes with every commit: the server, its pages, the schema.
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
-
-# Native binaries for platforms this image never runs on: it is glibc on x64.
-# Removing sharp's musl and wasm builds and onnxruntime's other platforms is
-# why the publish workflow builds linux/amd64 only.
-RUN rm -rf \
-      ./node_modules/@img/sharp-libvips-linuxmusl-x64 \
-      ./node_modules/@img/sharp-linuxmusl-x64 \
-      ./node_modules/@img/sharp-wasm32 \
-      ./node_modules/onnxruntime-node/bin/napi-v3/darwin \
-      ./node_modules/onnxruntime-node/bin/napi-v3/win32 \
-      ./node_modules/onnxruntime-node/bin/napi-v3/linux/arm64
-
-# Migrations run at startup. The CLI lives outside /app so its `node_modules`
-# cannot shadow the traced ones the server resolves.
 COPY --from=build --chown=node:node /app/prisma ./prisma
 COPY --chown=node:node docker/prisma.config.ts ./prisma.config.ts
-COPY --from=migrator --chown=node:node /opt/prisma/node_modules /opt/prisma/node_modules
-COPY --chown=node:node docker/entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
+COPY --chown=node:node --chmod=755 docker/entrypoint.sh ./entrypoint.sh
 
 # What this build is, for the app to report about itself (`src/lib/version.ts`).
 # Late on purpose: earlier, a new commit would invalidate the Next build cache
