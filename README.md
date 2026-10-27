@@ -53,8 +53,7 @@ configured.
 
 **Cut-outs** don't use Gemini at all: background removal runs on the server
 with a local model from `@imgly/background-removal-node`, about a second per
-piece, free. That package is AGPL-3.0 — fine for running FITR yourself, worth
-knowing before distributing it.
+piece, free. That package is AGPL-3.0, which is why FITR is too.
 
 ## Phone first
 
@@ -94,3 +93,9 @@ docker run -d -p 3000:3000 -v fitr-data:/data -e AUTH_SECRET="$(openssl rand -ba
 
 Migrations run on start. For Unraid there is a template and a walkthrough in
 [`unraid/`](unraid/README.md).
+
+## Licence
+
+[AGPL-3.0](LICENSE). You can run, change and share FITR freely; if you share
+it, or let others use a changed version over a network, offer them its source
+under the same licence.
